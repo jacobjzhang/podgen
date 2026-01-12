@@ -24,9 +24,14 @@ async function fetchArticleContent(url: string): Promise<string | null> {
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; Podgen/1.0; +https://podgen.app)',
-        'Accept': 'text/html,application/xhtml+xml',
+        // Use a realistic browser User-Agent to avoid bot blocking
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'Connection': 'keep-alive',
       },
+      redirect: 'follow',
     });
 
     clearTimeout(timeout);
@@ -73,6 +78,9 @@ async function summarizeArticle(
   content: string,
   apiKey: string
 ): Promise<{ summary: string; keyDetails: string[]; quotes: string[]; numbers: string[] }> {
+  // Truncate content to avoid token limits
+  const truncatedContent = content.slice(0, 6000);
+
   const response = await fetch(OPENAI_URL, {
     method: 'POST',
     headers: {
@@ -84,23 +92,20 @@ async function summarizeArticle(
       messages: [
         {
           role: 'system',
-          content: `You extract key information from news articles for podcast discussion. Be concise but capture the INTERESTING details that make for good conversation.
+          content: `Extract key information from news articles for podcast discussion. Output valid JSON only.
 
-Output JSON with:
-- summary: 2-3 sentence summary with the most newsworthy facts
-- keyDetails: Array of 3-5 specific, interesting details (names, places, specific facts)
-- quotes: Array of 1-2 notable quotes from the article (if any)
-- numbers: Array of specific numbers/statistics mentioned (dollar amounts, percentages, dates, etc.)
+Required JSON format:
+{"summary": "2-3 sentences", "keyDetails": ["detail1", "detail2"], "quotes": ["quote1"], "numbers": ["stat1"]}
 
-Focus on details that would spark discussion: surprising facts, controversies, implications, who's involved.`
+Focus on interesting details: names, numbers, controversies, implications.`
         },
         {
           role: 'user',
-          content: `Article title: "${title}"\n\nArticle content:\n${content}`
+          content: `Title: "${title}"\n\nContent:\n${truncatedContent}`
         }
       ],
       response_format: { type: 'json_object' },
-      max_completion_tokens: 500,
+      max_completion_tokens: 800,
     }),
   });
 
@@ -111,7 +116,42 @@ Focus on details that would spark discussion: surprising facts, controversies, i
   }
 
   const data = await response.json();
-  const result = JSON.parse(data.choices[0].message.content);
+
+  // Debug: log response structure
+  if (!data.choices || data.choices.length === 0) {
+    console.warn(`[Enricher] GPT-5-nano no choices in response:`, JSON.stringify(data).slice(0, 300));
+    return { summary: '', keyDetails: [], quotes: [], numbers: [] };
+  }
+
+  const choice = data.choices[0];
+  if (choice.finish_reason === 'length') {
+    console.warn(`[Enricher] GPT-5-nano hit token limit, response may be truncated`);
+  }
+
+  // Handle missing or null content
+  const content = choice?.message?.content;
+  if (!content) {
+    console.warn(`[Enricher] GPT-5-nano empty content. finish_reason: ${choice.finish_reason}`);
+    return { summary: '', keyDetails: [], quotes: [], numbers: [] };
+  }
+
+  // Parse JSON with error handling
+  let result;
+  try {
+    result = JSON.parse(content);
+  } catch (parseError) {
+    console.warn(`[Enricher] Failed to parse GPT response (${content.length} chars): "${content.slice(0, 200)}..."`);
+    // Try to extract what we can from malformed JSON
+    return {
+      summary: '',
+      keyDetails: [],
+      quotes: [],
+      numbers: [],
+    };
+  }
+
+  // Log successful extraction
+  console.log(`[Enricher] Extracted: ${result.summary?.slice(0, 60)}...`);
 
   return {
     summary: result.summary || '',
@@ -135,7 +175,7 @@ async function enrichNewsItem(
 
   if (!content || content.length < 200) {
     // Not enough content, return with original snippet
-    console.log(`[Enricher] Insufficient content, using snippet`);
+    console.log(`[Enricher] Insufficient content (${content?.length || 0} chars), using snippet`);
     return {
       ...item,
       detailedSummary: item.snippet,
@@ -144,6 +184,8 @@ async function enrichNewsItem(
       numbers: [],
     };
   }
+
+  console.log(`[Enricher] Fetched ${content.length} chars, summarizing...`);
 
   // Summarize with GPT-5-nano
   try {
