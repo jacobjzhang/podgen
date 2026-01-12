@@ -143,13 +143,12 @@ export function setCachedDialogue(newsItems: NewsItem[], dialogue: DialogueTurn[
 }
 
 // Audio cache (stored as .mp3 files)
-function audioKey(dialogue: DialogueTurn[]): string {
-  const dialogueHash = hash(dialogue.map(d => `${d.speaker}:${d.text}`).join('|'));
-  return `audio_${dialogueHash}`;
+export function getAudioKey(dialogue: DialogueTurn[]): string {
+  return hash(dialogue.map(d => `${d.speaker}:${d.text}`).join('|'));
 }
 
 export function getCachedAudio(dialogue: DialogueTurn[]): string | null {
-  const key = audioKey(dialogue);
+  const key = `audio_${getAudioKey(dialogue)}`;
   const filePath = join(CACHE_DIR, `${key}.mp3`);
 
   if (!existsSync(filePath)) {
@@ -176,7 +175,7 @@ export function getCachedAudio(dialogue: DialogueTurn[]): string | null {
 
 export function setCachedAudio(dialogue: DialogueTurn[], audioDataUrl: string): void {
   ensureCacheDir();
-  const key = audioKey(dialogue);
+  const key = `audio_${getAudioKey(dialogue)}`;
   const filePath = join(CACHE_DIR, `${key}.mp3`);
 
   try {
@@ -188,6 +187,86 @@ export function setCachedAudio(dialogue: DialogueTurn[], audioDataUrl: string): 
     console.log(`[Cache] WRITE - ${key}.mp3 (${sizeKB} KB)`);
   } catch (err) {
     console.error(`[Cache] Error writing audio:`, err);
+  }
+}
+
+// Episode metadata storage (for history sidebar)
+export interface EpisodeMetadata {
+  id: string;
+  interests: string[];
+  createdAt: string;
+  duration: number;
+  newsCount: number;
+  dialogueTurns: number;
+}
+
+export function saveEpisodeMetadata(
+  audioKey: string,
+  interests: string[],
+  duration: number,
+  newsCount: number,
+  dialogueTurns: number
+): void {
+  ensureCacheDir();
+  const metadata: EpisodeMetadata = {
+    id: audioKey,
+    interests,
+    createdAt: new Date().toISOString(),
+    duration,
+    newsCount,
+    dialogueTurns,
+  };
+  const filePath = join(CACHE_DIR, `episode_${audioKey}.json`);
+  writeFileSync(filePath, JSON.stringify(metadata, null, 2), 'utf-8');
+  console.log(`[Cache] WRITE - episode metadata for ${audioKey}`);
+}
+
+export function listEpisodes(): EpisodeMetadata[] {
+  ensureCacheDir();
+
+  try {
+    const files = readdirSync(CACHE_DIR);
+    const episodes: EpisodeMetadata[] = [];
+
+    for (const file of files) {
+      if (file.startsWith('episode_') && file.endsWith('.json')) {
+        const filePath = join(CACHE_DIR, file);
+        // Check if corresponding audio file exists
+        const audioId = file.replace('episode_', '').replace('.json', '');
+        const audioPath = join(CACHE_DIR, `audio_${audioId}.mp3`);
+
+        if (existsSync(audioPath)) {
+          try {
+            const data = readFileSync(filePath, 'utf-8');
+            episodes.push(JSON.parse(data));
+          } catch {
+            // Skip invalid files
+          }
+        }
+      }
+    }
+
+    // Sort by date, newest first
+    episodes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return episodes;
+  } catch {
+    return [];
+  }
+}
+
+export function getEpisodeAudio(episodeId: string): string | null {
+  const filePath = join(CACHE_DIR, `audio_${episodeId}.mp3`);
+
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    const buffer = readFileSync(filePath);
+    const base64 = buffer.toString('base64');
+    return `data:audio/mpeg;base64,${base64}`;
+  } catch {
+    return null;
   }
 }
 

@@ -14,6 +14,8 @@ import {
   setCachedDialogue,
   getCachedAudio,
   setCachedAudio,
+  getAudioKey,
+  saveEpisodeMetadata,
   logCacheStats,
 } from '@/lib/cache';
 
@@ -90,10 +92,17 @@ export async function POST(request: Request) {
     // Step 4: Generate audio (with cache)
     console.log('\n[Generate] Step 4: Generating audio...');
     let audioUrl = getCachedAudio(dialogue);
+    const isNewAudio = !audioUrl;
 
     if (!audioUrl) {
       audioUrl = await generateAudioDataUrl(dialogue);
       setCachedAudio(dialogue, audioUrl);
+    }
+
+    // Save episode metadata for history sidebar
+    if (isNewAudio) {
+      const audioKey = getAudioKey(dialogue);
+      saveEpisodeMetadata(audioKey, interests, duration, enrichedNews.length, dialogue.length);
     }
 
     console.log(`\n${'='.repeat(60)}`);
