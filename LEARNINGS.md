@@ -130,17 +130,31 @@ Use square brackets in text - the model interprets and performs them:
 
 | Category | Tags |
 |----------|------|
-| Reactions | `[laughs]`, `[sighs]`, `[gasps]`, `[whispers]`, `[exhales]`, `[gulps]` |
-| Emotions | `[excited]`, `[curious]`, `[sarcastic]`, `[nervous]`, `[frustrated]` |
-| Delivery | `[thoughtfully]`, `[mischievously]`, `[cheerfully]`, `[flatly]` |
-| Cognitive | `[pauses]`, `[hesitates]`, `[stammers]` |
+| Reactions | `[laughs]`, `[sighs]`, `[gasps]`, `[whispers]`, `[exhales]`, `[gulps]`, `[scoffs]`, `[groans]`, `[chuckles]` |
+| Emotions | `[excited]`, `[curious]`, `[sarcastic]`, `[nervous]`, `[frustrated]`, `[skeptical]`, `[amused]`, `[incredulous]` |
+| Delivery | `[thoughtfully]`, `[mischievously]`, `[cheerfully]`, `[flatly]`, `[deadpan]`, `[sarcastically]`, `[playfully]` |
+| Cognitive | `[pauses]`, `[hesitates]`, `[stammers]`, `[catches self]` |
+| Turn-taking | `[interrupting]`, `[overlapping]`, `[cuts in]`, `[jumping in]` |
+| Pacing | `[fast-paced]`, `[rushed]`, `[drawn out]`, `[pause]`, `[short pause]`, `[long pause]` |
 
 **Tips for Natural Speech**:
 - Use ellipses `...` for trailing off or hesitation
-- Use em-dashes `—` for interruptions
+- Use em-dashes `—` for interruptions/cut-offs mid-word
 - CAPS for emphasis on key words
 - Combine tags: `[laughs] That's ridiculous!`
-- Include narrative context: `"she said excitedly"` influences delivery
+- Layer emotions: `[laughs] No no, that's— [still laughing] that's insane.`
+
+**Filler Words & Disfluencies** (write literally in dialogue text):
+- `um`, `uh`, `uhhh` - thinking pauses
+- `like`, `you know`, `I mean` - casual fillers
+- `so basically`, `right?` - summarizing/checking
+- Repeat words for stuttering: `"The the the thing is..."`
+- False starts: `"So they're gonna— actually wait, let me back up."`
+
+**Turn Length Variety** (critical for natural feel):
+- Single-word turns: `"What."`, `"Huh."`, `"Seriously?"`
+- Backchannel: `"Mmhmm"`, `"Yeah"`, `"Right"`, `"Uh-huh"`
+- Mix with longer rambling turns for natural rhythm
 
 **Note**: Eleven v3 does NOT support SSML `<break>` tags. Use audio tags and punctuation instead.
 

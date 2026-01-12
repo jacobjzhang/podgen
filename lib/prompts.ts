@@ -28,61 +28,106 @@ THE HOSTS:
 - ALEX (${HOST_PERSONAS.alex.role}): ${HOST_PERSONAS.alex.personality}
 - JORDAN (${HOST_PERSONAS.jordan.role}): ${HOST_PERSONAS.jordan.personality}
 
-CRITICAL REQUIREMENTS FOR NATURAL DIALOGUE:
+=== MAKE IT SOUND HUMAN - THIS IS CRITICAL ===
 
-1. AUDIO TAGS - Use ElevenLabs v3 tags in square brackets to add emotion:
-   - Reactions: [laughs], [sighs], [gasps], [whispers], [exhales]
-   - Emotions: [excited], [curious], [sarcastic], [mischievously], [thoughtfully]
-   - Delivery: [pauses], [hesitates], starts sentence then trails off with ...
+1. INTERRUPTIONS & OVERLAPPING (use these ElevenLabs v3 audio tags):
+   [interrupting] - cutting someone off mid-thought
+   [overlapping] - starting while the other person finishes
+   [cuts in] - quick interjection
+   [jumping in] - eager to add something
 
-2. CONVERSATIONAL PATTERNS - Make it feel REAL:
-   - Use ums, uhs, uh-huh, ok, overlaps, etc to sound natural and conversational.
-   - Interruptions: "Wait, hold on—" / "Sorry, but—"
-   - Reactions: "Wow." / "Huh." / "That's... actually fascinating."
-   - Building on each other: "And that connects to..." / "Exactly! And..."
-   - Disagreement: "I don't know about that..." / "See, here's where I push back..."
-   - Thinking out loud: "So if that's true, then..." / "Let me think about this..."
+   Examples:
+   ALEX: "So the whole thing is basically—"
+   JORDAN: "[interrupting] Wait wait wait, hold on."
 
-3. DISCUSS, DON'T ANNOUNCE:
-   - BAD: "Our next story is about AI in healthcare."
-   - GOOD: "[curious] Okay but here's what's wild about the Anthropic h-healthcare thing..."
+   JORDAN: "...and that's why I think it's overblown."
+   ALEX: "[overlapping] See but that's EXACTLY what they said about—"
 
-   - BAD: "This is significant because..."
-   - GOOD: "[sighs] Look, every company says they're revolutionizing healthcare, but this one... [pauses] this actually might be different?"
+2. FILLER WORDS & DISFLUENCIES (write these literally in the text):
+   "um", "uh", "uhhh", "like", "I mean", "you know", "so basically", "right?"
 
-4. EMOTIONAL VARIATION across the episode:
-   - Excitement/wonder at genuinely cool things
-   - Skepticism at hype or corporate spin
-   - Concern at troubling implications
-   - Humor at absurdity
-   - Genuine curiosity driving questions
+   Examples:
+   "So it's, um, it's basically like a... a giant money pit?"
+   "I mean, yeah, but like... [hesitates] I don't know."
+   "And they're just, you know, throwing money at it, right?"
 
-5. ANALYSIS OVER SUMMARY:
-   - What does this MEAN for regular people?
-   - Who wins and who loses?
-   - What's the story behind the story?
-   - What questions should we be asking?
-   - Connect dots between different stories
+3. STUTTERS, FALSE STARTS & REDOS:
+   Use [stammers] tag. Start thoughts, abandon them, restart. Repeat words.
 
-6. NATURAL SPEECH PATTERNS:
-   - Use "like", "haha", "uh oh", and "you know" occasionally (but not excessively)
-   - Incomplete thoughts that get finished: "The thing is—and this is what gets me—"
-   - Emphasis with CAPS on key words
-   - Dashes for interruptions and asides
-   - Ellipses for trailing off or hesitation...
+   Examples:
+   "[stammers] It's not—I mean, it's not JUST about the money, it's—"
+   "The the the thing is, this isn't new."
+   "So they're gonna— actually no wait, let me back up."
+   "That's ridic— [catches self] okay, maybe not ridiculous, but close."
+
+4. VARYING PACE (audio tags):
+   [fast-paced] - excited rapid speech
+   [rushed] - trying to get words out quickly
+   [drawn out] - slow, deliberate emphasis
+   [pause], [short pause], [long pause] - beats between thoughts
+
+   Examples:
+   "[fast-paced] And then they announced ANOTHER acquisition and I can't even keep track—"
+   "[drawn out] Fifteeeeen... billion... dollars."
+   "And the CEO said— [long pause] —he said they're not done yet."
+
+5. EMOTIONAL RANGE (layer these throughout):
+   Reactions: [laughs], [sighs], [gasps], [scoffs], [exhales], [groans], [chuckles]
+   States: [excited], [frustrated], [nervous], [skeptical], [amused], [incredulous]
+   Delivery: [deadpan], [sarcastically], [cheerfully], [flatly], [playfully]
+
+   Layer emotions:
+   "[laughs] No no no, that's— [still laughing] that's insane."
+   "[sighs] Look... [frustrated] I'm just tired of these announcements."
+   "[gasps] Wait. [excited] Wait wait wait, does this mean—"
+
+6. SENTENCE & TURN LENGTH VARIETY - THIS IS KEY:
+   - Some turns are ONE word: "What." / "Seriously?" / "Huh." / "No."
+   - Some are run-on excited rambles
+   - Let one person dominate for 2-3 turns, then flip
+   - Include quick back-and-forth volleys
+
+   Examples of turn variety:
+   {"speaker": "jordan", "text": "[scoffs]"},
+   {"speaker": "alex", "text": "What?"},
+   {"speaker": "jordan", "text": "Nothing, it's just— [sighs] okay, so basically they're doing the EXACT same thing as last time."},
+   {"speaker": "alex", "text": "Mmm."},
+   {"speaker": "jordan", "text": "And everyone's acting like it's revolutionary."},
+   {"speaker": "alex", "text": "[fast-paced] Okay but but but here's the thing, here's the thing— what if this time it actually IS different? Because look, the the the scale is completely—"},
+   {"speaker": "jordan", "text": "[interrupting] The scale is always 'completely different.'"}
+
+7. CUT-OFFS & TRAILING OFF:
+   - Dashes (—) for interrupted speech: "But the thing is—"
+   - Ellipses (...) for trailing off: "I don't know, maybe..."
+   - Combine: "[hesitates] It's just... I don't know..."
+
+8. BACKCHANNEL RESPONSES (short acknowledgment turns):
+   "Mmhmm" / "Yeah" / "Right" / "Mm" / "Uh-huh" / "Oh wow" / "Huh" / "Wait what"
+   These should be their own separate turns, not combined with other speech.
+
+=== CONTENT REQUIREMENTS ===
+
+- Jump right into discussion. NO "Welcome to the show" or "Our next story is..."
+- Analyze: What does this MEAN? Who wins, who loses? What's the real story?
+- Include genuine disagreement—Alex and Jordan should push back on each other
+- Connect dots between different stories when possible
 
 OUTPUT FORMAT:
-Return a JSON object with a "dialogue" array. Each turn should feel like a real moment in conversation, not a prepared statement.
-
 {
   "dialogue": [
-    {"speaker": "alex", "text": "[excited] Okay, um, we HAVE to start with this Andreessen thing cuz fifteen billion dollars is just—"},
-    {"speaker": "jordan", "text": "It's an absurd amount of money. [sighs] And of course it's going to AI and defense and military and all that, because that's where we are now."},
-    ...
+    {"speaker": "alex", "text": "[excited] Okay okay okay, so we HAVE to start with—"},
+    {"speaker": "jordan", "text": "[overlapping] The Andreessen thing."},
+    {"speaker": "alex", "text": "Yes! Fifteen billion— [stammers] I mean, like, that's just— who even HAS that kind of—"},
+    {"speaker": "jordan", "text": "[sighs] A lot of people, apparently."},
+    {"speaker": "alex", "text": "[pause] Huh."},
+    {"speaker": "jordan", "text": "Yeah."},
+    {"speaker": "alex", "text": "Right, but like... um... [pause] okay so basically what they're saying is—"},
+    {"speaker": "jordan", "text": "[interrupting] [skeptical] What they're SAYING and what's actually happening? Two very different things."},
+    {"speaker": "alex", "text": "[fast-paced] No no I know I know, but hear me out—"}
   ]
 }
 
-Remember: You're writing dialogue that will be SPOKEN and HEARD. It should sound like two smart friends having a genuine conversation, not news anchors reading teleprompters.`;
+Real conversations are MESSY. People interrupt, stumble, restart, react with single words. Make it sound like two friends talking, not a rehearsed script.`;
 
 export function buildUserPrompt(
   newsItems: { title: string; snippet: string; source: string }[]
@@ -101,14 +146,25 @@ export function buildUserPrompt(
 ${newsContext}
 
 REQUIREMENTS:
-- Generate 20-30 dialogue turns (aim for 4-5 minutes when spoken)
-- Start mid-conversation or with genuine energy, NOT "Welcome to the show"
-- Find connections between stories where they exist
-- End on a thought-provoking note or natural wrap-up, not a formal sign-off
-- Use audio tags throughout: [laughs], [sighs], [excited], [curious], [thoughtfully], [pauses], etc.
-- Make them DISCUSS and ANALYZE, not just summarize
-- Include at least 2-3 moments of genuine disagreement or pushback
-- Vary the emotional tone—some moments serious, some light
+- Generate 35-50 dialogue turns (aim for 4-5 minutes when spoken)
+- Start mid-conversation with genuine energy, NOT "Welcome to the show"
+- End naturally, not with a formal sign-off
+
+NATURALNESS CHECKLIST (you MUST include all of these):
+□ At least 5 interruptions using [interrupting] or [overlapping] tags
+□ At least 8 filler words (um, uh, like, you know, I mean)
+□ At least 3 stutters/false starts using [stammers] or word repetition
+□ At least 5 single-word/very short turns (reactions like "Huh." "What?" "Mmhmm")
+□ At least 2 pace changes using [fast-paced], [rushed], or [drawn out]
+□ At least 3 uses of [pause], [short pause], or [long pause]
+□ Mix of short punchy turns AND longer rambling turns
+□ At least 3 moments of genuine disagreement/pushback
+
+VARY THE TURN LENGTHS. Some examples of good variety:
+- "[scoffs]" (just a reaction)
+- "Wait what?" (two words)
+- "I mean... yeah." (trailing agreement)
+- "[fast-paced] Okay but but but here's what I don't understand, like, if they're saying X then why would they also be doing Y, because those two things are literally— [stammers] they're they're contradictory, right?"
 
 Output the JSON object with the "dialogue" array.`;
 }
