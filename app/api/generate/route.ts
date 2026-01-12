@@ -1,12 +1,15 @@
 // POST /api/generate - Generate podcast episode from interests
 import { NextResponse } from 'next/server';
 import { fetchNewsForInterests } from '@/lib/dataforseo';
+import { enrichNewsItems } from '@/lib/article-enricher';
 import { generateDialogue, estimateDuration } from '@/lib/openai';
 import { generateAudioDataUrl } from '@/lib/elevenlabs';
 import { GenerateRequest, GenerateResponse } from '@/lib/types';
 import {
   getCachedNews,
   setCachedNews,
+  getCachedEnrichedNews,
+  setCachedEnrichedNews,
   getCachedDialogue,
   setCachedDialogue,
   getCachedAudio,
@@ -60,20 +63,32 @@ export async function POST(request: Request) {
 
     console.log(`[Generate] Using ${newsItems.length} news items`);
 
-    // Step 2: Generate dialogue (with cache)
-    console.log('\n[Generate] Step 2: Generating dialogue...');
-    let dialogue = getCachedDialogue(newsItems);
+    // Step 2: Enrich news with detailed summaries (with cache)
+    console.log('\n[Generate] Step 2: Enriching articles with GPT-5-nano...');
+    let enrichedNews = getCachedEnrichedNews(newsItems);
+
+    if (!enrichedNews) {
+      enrichedNews = await enrichNewsItems(newsItems);
+      setCachedEnrichedNews(newsItems, enrichedNews);
+    }
+
+    const enrichedCount = enrichedNews.filter(n => n.detailedSummary && n.detailedSummary !== n.snippet).length;
+    console.log(`[Generate] ${enrichedCount}/${enrichedNews.length} articles enriched with detailed summaries`);
+
+    // Step 3: Generate dialogue (with cache)
+    console.log('\n[Generate] Step 3: Generating dialogue...');
+    let dialogue = getCachedDialogue(enrichedNews);
 
     if (!dialogue) {
-      dialogue = await generateDialogue(newsItems);
-      setCachedDialogue(newsItems, dialogue);
+      dialogue = await generateDialogue(enrichedNews);
+      setCachedDialogue(enrichedNews, dialogue);
     }
 
     const duration = estimateDuration(dialogue);
     console.log(`[Generate] Using ${dialogue.length} dialogue turns (~${duration}s)`);
 
-    // Step 3: Generate audio (with cache)
-    console.log('\n[Generate] Step 3: Generating audio...');
+    // Step 4: Generate audio (with cache)
+    console.log('\n[Generate] Step 4: Generating audio...');
     let audioUrl = getCachedAudio(dialogue);
 
     if (!audioUrl) {
@@ -88,7 +103,7 @@ export async function POST(request: Request) {
     const response: GenerateResponse = {
       audioUrl,
       dialogue,
-      newsItems,
+      newsItems: enrichedNews,
       duration,
     };
 

@@ -6,6 +6,11 @@ export interface NewsItem {
   url: string;
   source: string;
   publishedAt?: string;
+  // Enriched fields (populated by GPT-5-nano summarization)
+  detailedSummary?: string;
+  keyDetails?: string[];
+  quotes?: string[];
+  numbers?: string[];
 }
 
 export interface TrendData {

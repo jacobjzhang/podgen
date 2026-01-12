@@ -129,16 +129,48 @@ OUTPUT FORMAT:
 
 Real conversations are MESSY. People interrupt, stumble, restart, react with single words. Make it sound like two friends talking, not a rehearsed script.`;
 
-export function buildUserPrompt(
-  newsItems: { title: string; snippet: string; source: string }[]
-): string {
+interface EnrichedNewsItem {
+  title: string;
+  snippet: string;
+  source: string;
+  detailedSummary?: string;
+  keyDetails?: string[];
+  quotes?: string[];
+  numbers?: string[];
+}
+
+export function buildUserPrompt(newsItems: EnrichedNewsItem[]): string {
   const newsContext = newsItems
-    .map(
-      (item, i) =>
-        `${i + 1}. "${item.title}"\n   Source: ${item.source}\n   Context: ${
-          item.snippet
-        }`
-    )
+    .map((item, i) => {
+      let context = `${i + 1}. "${item.title}"\n   Source: ${item.source}`;
+
+      // Use detailed summary if available, otherwise snippet
+      const summary = item.detailedSummary || item.snippet;
+      context += `\n   Summary: ${summary}`;
+
+      // Add key details if available
+      if (item.keyDetails && item.keyDetails.length > 0) {
+        context += `\n   Key details:`;
+        item.keyDetails.forEach(detail => {
+          context += `\n   - ${detail}`;
+        });
+      }
+
+      // Add quotes if available
+      if (item.quotes && item.quotes.length > 0) {
+        context += `\n   Notable quotes:`;
+        item.quotes.forEach(quote => {
+          context += `\n   - "${quote}"`;
+        });
+      }
+
+      // Add numbers/statistics if available
+      if (item.numbers && item.numbers.length > 0) {
+        context += `\n   Numbers/stats: ${item.numbers.join(', ')}`;
+      }
+
+      return context;
+    })
     .join("\n\n");
 
   return `Here are today's stories to discuss:
@@ -149,6 +181,8 @@ REQUIREMENTS:
 - Generate 35-50 dialogue turns (aim for 4-5 minutes when spoken)
 - Start mid-conversation with genuine energy, NOT "Welcome to the show"
 - End naturally, not with a formal sign-off
+- USE THE SPECIFIC DETAILS provided above! Mention specific numbers, quote people, reference the key details.
+- The details make the conversation interesting - don't just summarize, REACT to the specifics.
 
 NATURALNESS CHECKLIST (you MUST include all of these):
 □ At least 5 interruptions using [interrupting] or [overlapping] tags
@@ -159,6 +193,7 @@ NATURALNESS CHECKLIST (you MUST include all of these):
 □ At least 3 uses of [pause], [short pause], or [long pause]
 □ Mix of short punchy turns AND longer rambling turns
 □ At least 3 moments of genuine disagreement/pushback
+□ Reference SPECIFIC numbers, names, and quotes from the articles
 
 VARY THE TURN LENGTHS. Some examples of good variety:
 - "[scoffs]" (just a reaction)

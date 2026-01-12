@@ -99,6 +99,30 @@ export function setCachedNews(interests: string[], news: NewsItem[]): void {
   writeCache(key, news);
 }
 
+// Enriched news cache (news items with detailed summaries from GPT-5-nano)
+function enrichedKey(newsItems: NewsItem[]): string {
+  const newsHash = hash(newsItems.map(n => n.url).join('|'));
+  return `enriched_${newsHash}`;
+}
+
+export function getCachedEnrichedNews(newsItems: NewsItem[]): NewsItem[] | null {
+  const key = enrichedKey(newsItems);
+  const data = readCache<NewsItem[]>(key);
+
+  if (data) {
+    console.log(`[Cache] HIT - enriched news (${data.length} items)`);
+    return data;
+  }
+
+  console.log(`[Cache] MISS - enriched news`);
+  return null;
+}
+
+export function setCachedEnrichedNews(originalNews: NewsItem[], enrichedNews: NewsItem[]): void {
+  const key = enrichedKey(originalNews);
+  writeCache(key, enrichedNews);
+}
+
 // Dialogue cache
 export function getCachedDialogue(newsItems: NewsItem[]): DialogueTurn[] | null {
   const key = dialogueKey(newsItems);

@@ -55,9 +55,43 @@ POST /v3/keywords_data/google_trends/explore/live
 
 ---
 
-### 2. OpenAI GPT-5.2
+### 2. OpenAI GPT-5-nano (Article Enrichment)
 
-**Purpose**: Generate natural podcast dialogue from news summaries
+**Purpose**: Extract detailed summaries from news articles (cheap, fast)
+
+**Model**: `gpt-5-nano`
+- Cheapest GPT-5 variant
+- $0.05/1M input tokens, $0.40/1M output tokens
+- 32K context window (sufficient for article summarization)
+
+**Usage in Pipeline**:
+1. Fetch article HTML from news URLs
+2. Strip HTML tags, extract text content (first ~8000 chars)
+3. GPT-5-nano extracts: summary, key details, quotes, numbers
+4. Enriched data passed to dialogue generation
+
+**Prompt Strategy**:
+- System prompt asks for JSON output with specific fields
+- Focus on "interesting" details that spark discussion
+- Extract names, places, specific facts, controversies
+
+**Output Format**:
+```json
+{
+  "summary": "2-3 sentence summary with newsworthy facts",
+  "keyDetails": ["specific detail 1", "specific detail 2"],
+  "quotes": ["notable quote from article"],
+  "numbers": ["$15 billion", "47%", "2024"]
+}
+```
+
+**Cost Estimate**: ~$0.001-0.005 per article (negligible)
+
+---
+
+### 3. OpenAI GPT-5.2 (Dialogue Generation)
+
+**Purpose**: Generate natural podcast dialogue from enriched news summaries
 
 **Documentation**: https://platform.openai.com/docs/api-reference/chat
 
@@ -97,7 +131,7 @@ POST https://api.openai.com/v1/chat/completions
 
 ---
 
-### 3. ElevenLabs Text-to-Dialogue
+### 4. ElevenLabs Text-to-Dialogue
 
 **Purpose**: Convert dialogue script to natural-sounding audio
 
@@ -298,8 +332,9 @@ Rough estimates for a 3-5 minute episode:
 | Service | Usage | Estimated Cost |
 |---------|-------|----------------|
 | DataForSEO | ~5 news queries | ~$0.01-0.05 |
-| OpenAI GPT-5.2 | ~2k input + 1k output tokens | ~$0.02 |
-| ElevenLabs | ~1000 characters | ~$0.03-0.05 |
-| **Total** | | **~$0.06-0.12** |
+| GPT-5-nano (enrichment) | ~10 articles × ~3k tokens each | ~$0.002 |
+| OpenAI GPT-5.2 (dialogue) | ~4k input + 2k output tokens | ~$0.03 |
+| ElevenLabs | ~2000 characters | ~$0.05-0.08 |
+| **Total** | | **~$0.09-0.16** |
 
 Actual costs vary based on episode length and API pricing changes.
