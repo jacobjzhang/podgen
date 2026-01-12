@@ -7,9 +7,6 @@ const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 
 interface EnrichedNewsItem extends NewsItem {
   detailedSummary: string;
-  keyDetails: string[];
-  quotes: string[];
-  numbers: string[];
 }
 
 /**
@@ -71,15 +68,15 @@ async function fetchArticleContent(url: string): Promise<string | null> {
 }
 
 /**
- * Use GPT-5-nano to extract key details from article content
+ * Use GPT-5-nano to create a detailed summary of the article
  */
 async function summarizeArticle(
   title: string,
   content: string,
   apiKey: string
-): Promise<{ summary: string; keyDetails: string[]; quotes: string[]; numbers: string[] }> {
-  // Truncate content to avoid token limits
-  const truncatedContent = content.slice(0, 6000);
+): Promise<string> {
+  // Truncate content to ~4000 chars to leave room for output
+  const truncatedContent = content.slice(0, 4000);
 
   const response = await fetch(OPENAI_URL, {
     method: 'POST',
@@ -92,20 +89,14 @@ async function summarizeArticle(
       messages: [
         {
           role: 'system',
-          content: `Extract key information from news articles for podcast discussion. Output valid JSON only.
-
-Required JSON format:
-{"summary": "2-3 sentences", "keyDetails": ["detail1", "detail2"], "quotes": ["quote1"], "numbers": ["stat1"]}
-
-Focus on interesting details: names, numbers, controversies, implications.`
+          content: `Summarize this news article in 3-4 sentences for a podcast discussion. Include specific details that make it interesting: names of people involved, exact numbers/dollar amounts, direct quotes, and any surprising or controversial aspects. Be specific, not generic.`
         },
         {
           role: 'user',
-          content: `Title: "${title}"\n\nContent:\n${truncatedContent}`
+          content: `${title}\n\n${truncatedContent}`
         }
       ],
-      response_format: { type: 'json_object' },
-      max_completion_tokens: 800,
+      max_completion_tokens: 300,
     }),
   });
 
@@ -117,47 +108,21 @@ Focus on interesting details: names, numbers, controversies, implications.`
 
   const data = await response.json();
 
-  // Debug: log response structure
   if (!data.choices || data.choices.length === 0) {
-    console.warn(`[Enricher] GPT-5-nano no choices in response:`, JSON.stringify(data).slice(0, 300));
-    return { summary: '', keyDetails: [], quotes: [], numbers: [] };
+    console.warn(`[Enricher] GPT-5-nano no choices`);
+    return '';
   }
 
   const choice = data.choices[0];
-  if (choice.finish_reason === 'length') {
-    console.warn(`[Enricher] GPT-5-nano hit token limit, response may be truncated`);
+  const summary = choice?.message?.content?.trim() || '';
+
+  if (summary) {
+    console.log(`[Enricher] Summary: "${summary.slice(0, 80)}..."`);
+  } else {
+    console.warn(`[Enricher] Empty summary. finish_reason: ${choice.finish_reason}`);
   }
 
-  // Handle missing or null content
-  const responseContent = choice?.message?.content;
-  if (!responseContent) {
-    console.warn(`[Enricher] GPT-5-nano empty content. finish_reason: ${choice.finish_reason}`);
-    return { summary: '', keyDetails: [], quotes: [], numbers: [] };
-  }
-
-  // Parse JSON with error handling
-  let result;
-  try {
-    result = JSON.parse(responseContent);
-  } catch (parseError) {
-    console.warn(`[Enricher] Failed to parse GPT response (${responseContent.length} chars): "${responseContent.slice(0, 200)}..."`);
-    return {
-      summary: '',
-      keyDetails: [],
-      quotes: [],
-      numbers: [],
-    };
-  }
-
-  // Log successful extraction
-  console.log(`[Enricher] Extracted: ${result.summary?.slice(0, 60)}...`);
-
-  return {
-    summary: result.summary || '',
-    keyDetails: result.keyDetails || [],
-    quotes: result.quotes || [],
-    numbers: result.numbers || [],
-  };
+  return summary;
 }
 
 /**
@@ -178,9 +143,6 @@ async function enrichNewsItem(
     return {
       ...item,
       detailedSummary: item.snippet,
-      keyDetails: [],
-      quotes: [],
-      numbers: [],
     };
   }
 
@@ -188,29 +150,17 @@ async function enrichNewsItem(
 
   // Summarize with GPT-5-nano
   try {
-    const { summary, keyDetails, quotes, numbers } = await summarizeArticle(
-      item.title,
-      content,
-      apiKey
-    );
-
-    console.log(`[Enricher] Got ${keyDetails.length} details, ${quotes.length} quotes, ${numbers.length} numbers`);
+    const summary = await summarizeArticle(item.title, content, apiKey);
 
     return {
       ...item,
       detailedSummary: summary || item.snippet,
-      keyDetails,
-      quotes,
-      numbers,
     };
   } catch (error) {
     console.error(`[Enricher] Summarization failed:`, error);
     return {
       ...item,
       detailedSummary: item.snippet,
-      keyDetails: [],
-      quotes: [],
-      numbers: [],
     };
   }
 }
@@ -227,9 +177,6 @@ export async function enrichNewsItems(items: NewsItem[]): Promise<EnrichedNewsIt
     return items.map(item => ({
       ...item,
       detailedSummary: item.snippet,
-      keyDetails: [],
-      quotes: [],
-      numbers: [],
     }));
   }
 
