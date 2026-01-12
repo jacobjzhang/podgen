@@ -129,8 +129,8 @@ Focus on interesting details: names, numbers, controversies, implications.`
   }
 
   // Handle missing or null content
-  const content = choice?.message?.content;
-  if (!content) {
+  const responseContent = choice?.message?.content;
+  if (!responseContent) {
     console.warn(`[Enricher] GPT-5-nano empty content. finish_reason: ${choice.finish_reason}`);
     return { summary: '', keyDetails: [], quotes: [], numbers: [] };
   }
@@ -138,10 +138,9 @@ Focus on interesting details: names, numbers, controversies, implications.`
   // Parse JSON with error handling
   let result;
   try {
-    result = JSON.parse(content);
+    result = JSON.parse(responseContent);
   } catch (parseError) {
-    console.warn(`[Enricher] Failed to parse GPT response (${content.length} chars): "${content.slice(0, 200)}..."`);
-    // Try to extract what we can from malformed JSON
+    console.warn(`[Enricher] Failed to parse GPT response (${responseContent.length} chars): "${responseContent.slice(0, 200)}..."`);
     return {
       summary: '',
       keyDetails: [],
