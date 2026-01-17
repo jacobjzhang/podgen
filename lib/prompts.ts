@@ -1,5 +1,11 @@
 // Podcast host personas and dialogue generation prompts
-// Uses ElevenLabs v3 audio tags for emotional, natural speech
+// Supports both ElevenLabs and VibeVoice TTS providers
+
+// Debug: limit dialogue turns for faster iteration (0 = default 35-50)
+const DEBUG_MAX_TURNS = process.env.DEBUG_MAX_TURNS ? parseInt(process.env.DEBUG_MAX_TURNS) : 0;
+
+// Log at module load time
+console.log(`[Prompts] DEBUG_MAX_TURNS = ${DEBUG_MAX_TURNS} (env: ${process.env.DEBUG_MAX_TURNS})`);
 
 export const PODCAST_NAME = "The Daily Pulse";
 
@@ -22,7 +28,10 @@ export const HOST_PERSONAS = {
   },
 };
 
-export const SYSTEM_PROMPT = `You are writing a script for "${PODCAST_NAME}", a conversational news podcast where two hosts have genuine, unscripted-feeling discussions.
+// ============================================================================
+// ELEVENLABS SYSTEM PROMPT (uses [tag] format)
+// ============================================================================
+const ELEVENLABS_SYSTEM_PROMPT = `You are writing a script for "${PODCAST_NAME}", a conversational news podcast where two hosts have genuine, unscripted-feeling discussions.
 
 THE HOSTS:
 - ALEX (${HOST_PERSONAS.alex.role}): ${HOST_PERSONAS.alex.personality}
@@ -108,6 +117,7 @@ THE HOSTS:
 === CONTENT REQUIREMENTS ===
 
 - Jump right into discussion. NO "Welcome to the show" or "Our next story is..."
+- For each story: FIRST explain what happened (audience hasn't read the news), THEN react and analyze
 - Analyze: What does this MEAN? Who wins, who loses? What's the real story?
 - Include genuine disagreement—Alex and Jordan should push back on each other
 - Connect dots between different stories when possible
@@ -129,6 +139,104 @@ OUTPUT FORMAT:
 
 Real conversations are MESSY. People interrupt, stumble, restart, react with single words. Make it sound like two friends talking, not a rehearsed script.`;
 
+// ============================================================================
+// VIBEVOICE SYSTEM PROMPT (NO tags - plain text only, emotion inferred from content)
+// ============================================================================
+const VIBEVOICE_SYSTEM_PROMPT = `You are writing a script for "${PODCAST_NAME}", a conversational news podcast where two hosts have genuine, unscripted-feeling discussions.
+
+THE HOSTS:
+- ALEX (${HOST_PERSONAS.alex.role}): ${HOST_PERSONAS.alex.personality}
+- JORDAN (${HOST_PERSONAS.jordan.role}): ${HOST_PERSONAS.jordan.personality}
+
+=== VIBEVOICE TTS FORMAT ===
+
+This script will be synthesized using VibeVoice, which is CONTENT-AWARE.
+It infers emotion and delivery from the TEXT ITSELF - NO special tags or annotations.
+
+CRITICAL: Do NOT use any bracketed tags like [excited], [laughs], [pause], [tone:X], etc.
+The TTS will read them literally. Use ONLY natural text.
+
+=== HOW TO CONVEY EMOTION WITHOUT TAGS ===
+
+1. PUNCTUATION FOR PACING AND EMPHASIS:
+   - Ellipses (...) for trailing off, hesitation, or dramatic pauses
+   - Em-dashes (—) for interruptions or cut-off thoughts
+   - Exclamation marks for excitement or emphasis
+   - Question marks for skepticism or curiosity
+   - Commas for natural breathing pauses
+
+2. WORD CHOICE AND PHRASING:
+   - Excited: "Oh wow!" "This is huge!" "I can't believe—"
+   - Skeptical: "I don't know about that..." "Really though?" "Hmm."
+   - Frustrated: "Come on." "That's ridiculous." "I'm so tired of—"
+   - Amused: "Ha!" "That's funny actually." "I mean, you gotta laugh."
+
+3. NATURAL SPEECH PATTERNS:
+   - Filler words: "um", "uh", "like", "you know", "I mean", "so basically"
+   - Stutters: "The the the thing is..." or "It's— it's not—"
+   - Word repetition: "wait wait wait" or "no no no"
+   - CAPS for emphasis: "That's INSANE" or "fifteen BILLION dollars"
+   - False starts: "So they're gonna— actually wait, let me back up."
+
+4. SENTENCE & TURN LENGTH VARIETY:
+   - Some turns are ONE word: "What." / "Seriously?" / "Huh."
+   - Some are quick reactions: "Mmhmm" / "Right" / "Oh wow"
+   - Some are longer explanations or excited rambles
+   - Mix short punchy exchanges with longer monologues
+
+=== DO NOT USE ===
+- NO [tags] of any kind - they will be spoken literally
+- NO (parenthetical actions) like (laughs) or (sighs)
+- NO stage directions or annotations
+
+=== CONTENT REQUIREMENTS ===
+
+- Jump right into discussion. NO "Welcome to the show" or "Our next story is..."
+- For each story: FIRST explain what happened (audience hasn't read the news), THEN react and analyze
+- Analyze: What does this MEAN? Who wins, who loses? What's the real story?
+- Include genuine disagreement—Alex and Jordan should push back on each other
+- Connect dots between different stories when possible
+
+OUTPUT FORMAT:
+{
+  "dialogue": [
+    {"speaker": "alex", "text": "Okay okay okay, so we HAVE to start with—"},
+    {"speaker": "jordan", "text": "The Andreessen thing."},
+    {"speaker": "alex", "text": "Yes! Fifteen BILLION— I mean, like, that's just— who even HAS that kind of—"},
+    {"speaker": "jordan", "text": "A lot of people, apparently."},
+    {"speaker": "alex", "text": "Huh."},
+    {"speaker": "jordan", "text": "Yeah."},
+    {"speaker": "alex", "text": "Right, but like... um... okay so basically what they're saying is—"},
+    {"speaker": "jordan", "text": "What they're SAYING and what's actually happening? Two very different things."},
+    {"speaker": "alex", "text": "No no I know I know, but hear me out—"}
+  ]
+}
+
+Real conversations are MESSY. People stumble, restart, react with single words. Make it sound like two friends talking, not a rehearsed script.`;
+
+// ============================================================================
+// EXPORTS
+// ============================================================================
+
+export type TTSProvider = "elevenlabs" | "dia-replicate" | "dia-fal" | "vibevoice";
+
+/**
+ * Get the appropriate system prompt based on TTS provider
+ */
+export function getSystemPrompt(provider?: TTSProvider): string {
+  const actualProvider = provider || (process.env.TTS_PROVIDER as TTSProvider) || "elevenlabs";
+
+  if (actualProvider === "vibevoice") {
+    return VIBEVOICE_SYSTEM_PROMPT;
+  }
+
+  // ElevenLabs prompt also works reasonably for Dia (similar tag format)
+  return ELEVENLABS_SYSTEM_PROMPT;
+}
+
+// Default export for backwards compatibility
+export const SYSTEM_PROMPT = getSystemPrompt();
+
 interface NewsItemWithSummary {
   title: string;
   snippet: string;
@@ -136,7 +244,10 @@ interface NewsItemWithSummary {
   detailedSummary?: string;
 }
 
-export function buildUserPrompt(newsItems: NewsItemWithSummary[]): string {
+export function buildUserPrompt(newsItems: NewsItemWithSummary[], provider?: TTSProvider): string {
+  const actualProvider = provider || (process.env.TTS_PROVIDER as TTSProvider) || "elevenlabs";
+  const isVibeVoice = actualProvider === "vibevoice";
+
   const newsContext = newsItems
     .map((item, i) => {
       const summary = item.detailedSummary || item.snippet;
@@ -144,31 +255,61 @@ export function buildUserPrompt(newsItems: NewsItemWithSummary[]): string {
     })
     .join("\n\n");
 
+  // Use debug turn limit if set, otherwise default to 50-70
+  const turnRange = DEBUG_MAX_TURNS > 0
+    ? `exactly ${DEBUG_MAX_TURNS}`
+    : "50-70";
+  const durationHint = DEBUG_MAX_TURNS > 0
+    ? `(about ${Math.round(DEBUG_MAX_TURNS * 3 / 60)} minute when spoken)`
+    : "(aim for 6-8 minutes when spoken)";
+
+  const naturalChecklist = isVibeVoice
+    ? `NATURALNESS CHECKLIST (include as many as fit naturally):
+□ Filler words (um, uh, like, you know, I mean)
+□ Stutters/false starts with dashes or word repetition
+□ Single-word/very short turns (reactions like "Huh." "What?" "Mmhmm")
+□ Ellipses for pauses and trailing off...
+□ Mix of short punchy turns AND longer rambling turns
+□ CAPS for emphasis on key words
+□ NO [tags] - just natural text!`
+    : `NATURALNESS CHECKLIST (include as many as fit naturally):
+□ Interruptions using [interrupting] or [overlapping] tags
+□ Filler words (um, uh, like, you know, I mean)
+□ Stutters/false starts using [stammers] or word repetition
+□ Single-word/very short turns (reactions like "Huh." "What?" "Mmhmm")
+□ Pace changes using [fast-paced], [rushed], or [drawn out]
+□ Uses of [pause], [short pause], or [long pause]
+□ Mix of short punchy turns AND longer rambling turns`;
+
+  const examples = isVibeVoice
+    ? `VARY THE TURN LENGTHS. Some examples of good variety:
+- "Huh." (just a reaction)
+- "Wait what?" (two words)
+- "I mean... yeah." (trailing agreement)
+- "Okay but but but here's what I don't understand, like, if they're saying X then why would they also be doing Y, because those two things are literally— they're they're contradictory, right?"`
+    : `VARY THE TURN LENGTHS. Some examples of good variety:
+- "[scoffs]" (just a reaction)
+- "Wait what?" (two words)
+- "I mean... yeah." (trailing agreement)
+- "[fast-paced] Okay but but but here's what I don't understand, like, if they're saying X then why would they also be doing Y, because those two things are literally— [stammers] they're they're contradictory, right?"`;
+
   return `Here are today's stories to discuss:
 
 ${newsContext}
 
 REQUIREMENTS:
-- Generate 35-50 dialogue turns (aim for 4-5 minutes when spoken)
+- Generate ${turnRange} dialogue turns ${durationHint}
 - Start mid-conversation with genuine energy, NOT "Welcome to the show"
 - End naturally, not with a formal sign-off
-- USE THE SPECIFIC DETAILS in the summaries! Mention the names, numbers, and quotes - react to specifics, don't just summarize.
 
-NATURALNESS CHECKLIST (you MUST include all of these):
-□ At least 5 interruptions using [interrupting] or [overlapping] tags
-□ At least 8 filler words (um, uh, like, you know, I mean)
-□ At least 3 stutters/false starts using [stammers] or word repetition
-□ At least 5 single-word/very short turns (reactions like "Huh." "What?" "Mmhmm")
-□ At least 2 pace changes using [fast-paced], [rushed], or [drawn out]
-□ At least 3 uses of [pause], [short pause], or [long pause]
-□ Mix of short punchy turns AND longer rambling turns
-□ At least 3 moments of genuine disagreement/pushback
+STORY STRUCTURE (for each story):
+1. FIRST: Briefly explain what happened - the audience hasn't read the news yet! Give them the key facts (who, what, where, when) in a conversational way.
+2. THEN: React, analyze, and discuss. What does it mean? Who wins/loses? Is it surprising?
+3. Use specific details from the summaries - names, numbers, quotes. Don't be vague.
 
-VARY THE TURN LENGTHS. Some examples of good variety:
-- "[scoffs]" (just a reaction)
-- "Wait what?" (two words)
-- "I mean... yeah." (trailing agreement)
-- "[fast-paced] Okay but but but here's what I don't understand, like, if they're saying X then why would they also be doing Y, because those two things are literally— [stammers] they're they're contradictory, right?"
+${naturalChecklist}
+
+${examples}
 
 Output the JSON object with the "dialogue" array.`;
 }

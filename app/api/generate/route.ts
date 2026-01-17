@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { fetchNewsForInterests } from '@/lib/dataforseo';
 import { enrichNewsItems } from '@/lib/article-enricher';
 import { generateDialogue, estimateDuration } from '@/lib/openai';
-import { generateAudioDataUrl } from '@/lib/elevenlabs';
+import { generateAudioDataUrl, getCurrentProvider } from '@/lib/tts';
 import { GenerateRequest, GenerateResponse } from '@/lib/types';
 import {
   getCachedNews,
@@ -40,6 +40,9 @@ export async function POST(request: Request) {
       );
     }
 
+    const totalStart = Date.now();
+    const timings: Record<string, number> = {};
+
     console.log(`\n${'='.repeat(60)}`);
     console.log(`[Generate] Starting podcast generation for: ${interests.join(', ')}`);
     console.log(`${'='.repeat(60)}`);
@@ -48,12 +51,17 @@ export async function POST(request: Request) {
     // Step 1: Fetch news (with cache)
     console.log('\n[Generate] Step 1: Fetching news...');
     let newsItems = getCachedNews(interests);
+    let stepStart = Date.now();
 
     if (!newsItems) {
       newsItems = await fetchNewsForInterests(interests, 3);
       if (newsItems.length > 0) {
         setCachedNews(interests, newsItems);
       }
+      timings.news = Date.now() - stepStart;
+      console.log(`[Generate] News fetched in ${(timings.news / 1000).toFixed(1)}s`);
+    } else {
+      console.log('[Generate] News loaded from cache');
     }
 
     if (newsItems.length === 0) {
@@ -68,10 +76,15 @@ export async function POST(request: Request) {
     // Step 2: Enrich news with detailed summaries (with cache)
     console.log('\n[Generate] Step 2: Enriching articles with GPT-5-nano...');
     let enrichedNews = getCachedEnrichedNews(newsItems);
+    stepStart = Date.now();
 
     if (!enrichedNews) {
       enrichedNews = await enrichNewsItems(newsItems);
       setCachedEnrichedNews(newsItems, enrichedNews);
+      timings.enrichment = Date.now() - stepStart;
+      console.log(`[Generate] Enrichment completed in ${(timings.enrichment / 1000).toFixed(1)}s`);
+    } else {
+      console.log('[Generate] Enriched news loaded from cache');
     }
 
     const enrichedCount = enrichedNews.filter(n => n.detailedSummary && n.detailedSummary !== n.snippet).length;
@@ -80,23 +93,33 @@ export async function POST(request: Request) {
     // Step 3: Generate dialogue (with cache)
     console.log('\n[Generate] Step 3: Generating dialogue...');
     let dialogue = getCachedDialogue(enrichedNews);
+    stepStart = Date.now();
 
     if (!dialogue) {
       dialogue = await generateDialogue(enrichedNews);
       setCachedDialogue(enrichedNews, dialogue);
+      timings.dialogue = Date.now() - stepStart;
+      console.log(`[Generate] Dialogue generated in ${(timings.dialogue / 1000).toFixed(1)}s`);
+    } else {
+      console.log('[Generate] Dialogue loaded from cache');
     }
 
     const duration = estimateDuration(dialogue);
-    console.log(`[Generate] Using ${dialogue.length} dialogue turns (~${duration}s)`);
+    console.log(`[Generate] Using ${dialogue.length} dialogue turns (~${duration}s estimated audio)`);
 
     // Step 4: Generate audio (with cache)
-    console.log('\n[Generate] Step 4: Generating audio...');
+    console.log(`\n[Generate] Step 4: Generating audio (provider: ${getCurrentProvider()})...`);
     let audioUrl = getCachedAudio(dialogue);
     const isNewAudio = !audioUrl;
+    stepStart = Date.now();
 
     if (!audioUrl) {
       audioUrl = await generateAudioDataUrl(dialogue);
       setCachedAudio(dialogue, audioUrl);
+      timings.audio = Date.now() - stepStart;
+      console.log(`[Generate] Audio generated in ${(timings.audio / 1000).toFixed(1)}s`);
+    } else {
+      console.log('[Generate] Audio loaded from cache');
     }
 
     // Save episode metadata for history sidebar
@@ -105,8 +128,13 @@ export async function POST(request: Request) {
       saveEpisodeMetadata(audioKey, interests, duration, enrichedNews.length, dialogue.length);
     }
 
+    const totalTime = Date.now() - totalStart;
     console.log(`\n${'='.repeat(60)}`);
     console.log('[Generate] SUCCESS - Podcast generation complete!');
+    console.log(`[Generate] Total time: ${(totalTime / 1000).toFixed(1)}s`);
+    if (Object.keys(timings).length > 0) {
+      console.log(`[Generate] Breakdown: ${Object.entries(timings).map(([k, v]) => `${k}=${(v / 1000).toFixed(1)}s`).join(', ')}`);
+    }
     console.log(`${'='.repeat(60)}\n`);
 
     const response: GenerateResponse = {

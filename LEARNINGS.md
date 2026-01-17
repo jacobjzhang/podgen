@@ -219,6 +219,211 @@ Use square brackets in text - the model interprets and performs them:
 
 ---
 
+### 5. Dia (Alternative TTS via Replicate)
+
+**Purpose**: Cost-effective alternative to ElevenLabs for TTS (~99% cheaper)
+
+**Documentation**: https://replicate.com/zsxkib/dia
+
+**Hosting**: Replicate (serverless GPU inference)
+
+**Authentication**:
+- API token in Replicate client
+- Environment variable: `REPLICATE_API_TOKEN`
+
+**Endpoint** (via Replicate SDK):
+```javascript
+const replicate = new Replicate({ auth: apiToken });
+const output = await replicate.run("zsxkib/dia:2119e338ca5c0dacd3def83158d6c80d431f2ac1024146d8cca9220b74385599", { input: {...} });
+```
+
+**Request Format**:
+```javascript
+{
+  text: "[S1] Hello from speaker one [S2] Hi from speaker two (laughs)",
+  temperature: 1.3,
+  cfg_scale: 3,
+  max_new_tokens: 3072,
+  speed_factor: 1.0
+}
+```
+
+**Script Format**:
+- Multi-speaker dialogue with `[S1]` and `[S2]` tags
+- Non-verbal cues use parentheses: `(laughs)`, `(sighs)`, `(whispers)`
+- Supports 2 speakers for podcast format
+
+**Key Parameters**:
+| Parameter | Default | Range | Description |
+|-----------|---------|-------|-------------|
+| `temperature` | 1.8 | 1.0-2.5 | Randomness control |
+| `cfg_scale` | 3 | 1-5 | Text adherence strictness |
+| `max_new_tokens` | 3072 | 500-4096 | ~86 tokens ≈ 1 second |
+| `speed_factor` | 1.0 | 0.5-1.5 | Playback speed |
+
+**Response**: WAV audio file (as stream or URL)
+
+**Pricing**: ~$0.029 per run (~30s generation time)
+
+**Feature Flag**:
+```bash
+USE_VIBEVOICE=true  # Set to enable Dia instead of ElevenLabs
+```
+
+**Trade-offs vs ElevenLabs**:
+| Aspect | ElevenLabs | Dia |
+|--------|------------|-----|
+| Cost (10 min) | ~$1.60-2.70 | ~$0.03 |
+| Quality | Excellent | Good |
+| Generation time | ~30s | ~30s |
+| Audio Tags | Full support | Parentheses format |
+| Emotional range | High | Moderate |
+
+**Notes**:
+- Dia uses parentheses for actions: `(laughs)` instead of `[laughs]`
+- Auto-converts ElevenLabs tags to Dia format in code
+- Output is WAV format (converted to base64 data URL)
+
+---
+
+### 6. Dia via fal.ai (Recommended Alternative)
+
+**Purpose**: Cleaner SDK, same Dia model, better developer experience
+
+**Documentation**: https://fal.ai/models/fal-ai/dia-tts
+
+**Hosting**: fal.ai (serverless GPU inference)
+
+**Authentication**:
+- API key in fal client configuration
+- Environment variable: `FAL_API_KEY`
+
+**Endpoint** (via fal SDK):
+```javascript
+import { fal } from "@fal-ai/client";
+fal.config({ credentials: apiKey });
+
+const result = await fal.subscribe("fal-ai/dia-tts", {
+  input: { text: "[S1] Hello! [S2] Hi there! (laughs)" },
+  logs: true,
+});
+```
+
+**Response Format**:
+```javascript
+{
+  audio: {
+    url: "https://...",
+    content_type: "audio/mpeg"
+  }
+}
+```
+
+**Output**: MP3 audio file (vs WAV from Replicate)
+
+**Pricing**: $0.04 per 1000 characters
+
+**Advantages over Replicate**:
+- Cleaner SDK with `fal.subscribe()` pattern
+- Built-in queue management and progress updates
+- MP3 output (smaller files than WAV)
+- Simpler response format (direct URL)
+
+**Provider Selection**:
+```bash
+# In .env.local
+TTS_PROVIDER=dia-fal      # Use fal.ai
+TTS_PROVIDER=dia-replicate # Use Replicate
+TTS_PROVIDER=elevenlabs    # Use ElevenLabs (default)
+```
+
+---
+
+### 7. VibeVoice (Recommended for Dialogue)
+
+**Purpose**: Native multi-speaker dialogue generation - no chunking or concatenation needed
+
+**Documentation**: https://replicate.com/microsoft/vibevoice
+
+**Why VibeVoice over Dia**:
+- Native multi-speaker support (up to 4 speakers in one generation)
+- Up to 90 minutes of audio in a single call
+- Built-in voice presets with consistent identity
+- No chunking/concatenation = no voice consistency issues
+
+**Hosting**: Replicate (also available on fal.ai)
+
+**Authentication**:
+- API token via Replicate client
+- Environment variable: `REPLICATE_API_TOKEN`
+
+**Script Format**:
+```
+Speaker 1: First speaker's dialogue here.
+Speaker 2: Second speaker responds.
+Speaker 1: Back to first speaker.
+```
+
+**Voice Presets**:
+| Voice | Description |
+|-------|-------------|
+| `en-Frank_man` | Male voice (used for Alex) |
+| `en-Alice_woman` | Female voice (used for Jordan) |
+| `en-Carter_man` | Alternative male |
+| `en-Maya_woman` | Alternative female |
+| `en-Mary_woman_bgm` | Female with background music |
+
+**API Usage** (via Replicate):
+```javascript
+const prediction = await replicate.predictions.create({
+  version: "624421f6fdd4122d0b3ff391ff3449f09db9ad4927167110a4c4b104fa37f728",
+  input: {
+    script: "Speaker 1: Hello!\nSpeaker 2: Hi there!",
+    scale: 1.3,
+    speaker_1: "en-Frank_man",
+    speaker_2: "en-Alice_woman",
+  },
+});
+```
+
+**Pricing**:
+- Replicate: ~$0.10 per run (~$0.001/second)
+- fal.ai: $0.04 per minute
+
+**Cold Start**: First run takes ~150s (GPU spin-up), subsequent runs ~30-60s
+
+**Output**: MP3 audio file
+
+**Tag Format**: VibeVoice does NOT support any tags!
+
+VibeVoice is **content-aware** - it infers emotion and delivery from the text itself.
+Any `[tags]` will be spoken literally, so our code strips them all.
+
+**What Works in VibeVoice** (plain text only):
+- Natural filler words: "um", "uh", "like", "you know"
+- Stutters written directly: "The the the thing is..."
+- CAPS for emphasis: "That's INSANE"
+- Cut-offs with dashes: "But that's—"
+- Trailing off with ellipses: "I don't know, maybe..."
+- Punctuation for pacing: commas, periods, exclamation marks
+- Word choice conveys emotion: "Oh wow!" vs "Hmm." vs "Come on."
+
+**What Does NOT Work** (all stripped by our code):
+- `[any]` bracketed tags - spoken literally if not removed
+- `(parenthetical actions)` like (laughs) - also spoken literally
+- No way to force specific emotions - must use natural text
+
+**Provider Selection** (updated):
+```bash
+# In .env.local
+TTS_PROVIDER=vibevoice     # Recommended - native dialogue
+TTS_PROVIDER=dia-fal       # Dia via fal.ai
+TTS_PROVIDER=dia-replicate # Dia via Replicate
+TTS_PROVIDER=elevenlabs    # ElevenLabs (highest quality, most expensive)
+```
+
+---
+
 ## Implementation Decisions
 
 ### 1. Next.js Full-Stack
@@ -327,14 +532,26 @@ ELEVENLABS_VOICE_2=Aw4FAjKCGjjNkVhN1Xmq
 
 ## Cost Estimates (per episode)
 
-Rough estimates for a 3-5 minute episode:
+### 10-Minute Episode with ElevenLabs
 
 | Service | Usage | Estimated Cost |
 |---------|-------|----------------|
-| DataForSEO | ~5 news queries | ~$0.01-0.05 |
+| DataForSEO | ~5 news queries | ~$0.02 |
 | GPT-5-nano (enrichment) | ~10 articles × ~3k tokens each | ~$0.002 |
-| OpenAI GPT-5.2 (dialogue) | ~4k input + 2k output tokens | ~$0.03 |
-| ElevenLabs | ~2000 characters | ~$0.05-0.08 |
-| **Total** | | **~$0.09-0.16** |
+| OpenAI GPT-5.2 (dialogue) | ~4k input + 2k output tokens | ~$0.08 |
+| ElevenLabs | ~10,000 characters | ~$1.60-2.70 |
+| **Total** | | **~$1.70-2.80** |
+
+### 10-Minute Episode with Dia (Alternative)
+
+| Service | Usage | Estimated Cost |
+|---------|-------|----------------|
+| DataForSEO | ~5 news queries | ~$0.02 |
+| GPT-5-nano (enrichment) | ~10 articles × ~3k tokens each | ~$0.002 |
+| OpenAI GPT-5.2 (dialogue) | ~4k input + 2k output tokens | ~$0.08 |
+| Dia (Replicate) | ~10,000 characters | ~$0.03 |
+| **Total** | | **~$0.13** |
+
+**Cost Savings**: Dia reduces per-episode cost by ~95%.
 
 Actual costs vary based on episode length and API pricing changes.

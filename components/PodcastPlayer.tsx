@@ -15,6 +15,7 @@ export default function PodcastPlayer({ audioUrl, dialogue, duration }: PodcastP
   const [currentTime, setCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(duration || 0);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -34,6 +35,13 @@ export default function PodcastPlayer({ audioUrl, dialogue, duration }: PodcastP
       audio.removeEventListener('ended', handleEnded);
     };
   }, []);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.playbackRate = playbackSpeed;
+    }
+  }, [playbackSpeed]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -165,6 +173,23 @@ export default function PodcastPlayer({ audioUrl, dialogue, duration }: PodcastP
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />
           </svg>
         </button>
+      </div>
+
+      {/* Speed control */}
+      <div className="flex items-center justify-center gap-2 mt-4">
+        <span className="text-sm text-indigo-300">Speed:</span>
+        <select
+          value={playbackSpeed}
+          onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+          className="bg-white/10 text-white rounded-lg px-3 py-1.5 text-sm border border-white/20 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50 transition cursor-pointer"
+        >
+          <option value={0.5} className="bg-indigo-900">0.5x</option>
+          <option value={0.75} className="bg-indigo-900">0.75x</option>
+          <option value={1} className="bg-indigo-900">1x</option>
+          <option value={1.25} className="bg-indigo-900">1.25x</option>
+          <option value={1.5} className="bg-indigo-900">1.5x</option>
+          <option value={2} className="bg-indigo-900">2x</option>
+        </select>
       </div>
 
       {/* Transcript toggle */}
