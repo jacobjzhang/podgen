@@ -226,11 +226,12 @@ export type TTSProvider = "elevenlabs" | "dia-replicate" | "dia-fal" | "vibevoic
 export function getSystemPrompt(provider?: TTSProvider): string {
   const actualProvider = provider || (process.env.TTS_PROVIDER as TTSProvider) || "elevenlabs";
 
-  if (actualProvider === "vibevoice") {
+  // VibeVoice and Dia work better with plain text (no tags)
+  if (actualProvider === "vibevoice" || actualProvider === "dia-fal" || actualProvider === "dia-replicate") {
     return VIBEVOICE_SYSTEM_PROMPT;
   }
 
-  // ElevenLabs prompt also works reasonably for Dia (similar tag format)
+  // ElevenLabs uses [tag] format
   return ELEVENLABS_SYSTEM_PROMPT;
 }
 
@@ -246,7 +247,8 @@ interface NewsItemWithSummary {
 
 export function buildUserPrompt(newsItems: NewsItemWithSummary[], provider?: TTSProvider): string {
   const actualProvider = provider || (process.env.TTS_PROVIDER as TTSProvider) || "elevenlabs";
-  const isVibeVoice = actualProvider === "vibevoice";
+  // VibeVoice and Dia use plain text (no tags)
+  const usePlainText = actualProvider === "vibevoice" || actualProvider === "dia-fal" || actualProvider === "dia-replicate";
 
   const newsContext = newsItems
     .map((item, i) => {
@@ -255,15 +257,15 @@ export function buildUserPrompt(newsItems: NewsItemWithSummary[], provider?: TTS
     })
     .join("\n\n");
 
-  // Use debug turn limit if set, otherwise default to 50-70
+  // Use debug turn limit if set, otherwise default to 80-100
   const turnRange = DEBUG_MAX_TURNS > 0
     ? `exactly ${DEBUG_MAX_TURNS}`
-    : "50-70";
+    : "80-100";
   const durationHint = DEBUG_MAX_TURNS > 0
     ? `(about ${Math.round(DEBUG_MAX_TURNS * 3 / 60)} minute when spoken)`
-    : "(aim for 6-8 minutes when spoken)";
+    : "(aim for 10-12 minutes when spoken)";
 
-  const naturalChecklist = isVibeVoice
+  const naturalChecklist = usePlainText
     ? `NATURALNESS CHECKLIST (include as many as fit naturally):
 □ Filler words (um, uh, like, you know, I mean)
 □ Stutters/false starts with dashes or word repetition
@@ -281,7 +283,7 @@ export function buildUserPrompt(newsItems: NewsItemWithSummary[], provider?: TTS
 □ Uses of [pause], [short pause], or [long pause]
 □ Mix of short punchy turns AND longer rambling turns`;
 
-  const examples = isVibeVoice
+  const examples = usePlainText
     ? `VARY THE TURN LENGTHS. Some examples of good variety:
 - "Huh." (just a reaction)
 - "Wait what?" (two words)

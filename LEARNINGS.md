@@ -329,6 +329,23 @@ const result = await fal.subscribe("fal-ai/dia-tts", {
 - MP3 output (smaller files than WAV)
 - Simpler response format (direct URL)
 
+**Tested Limits & Findings**:
+- Max input: **10,000 characters** per call
+- Output is WAV (not MP3 as docs suggest), ~2MB per ~20s
+- No `max_new_tokens` parameter exposed - fal.ai handles internally
+- Voice cloning: `ref_audio_url` + `ref_text` for consistency across chunks
+
+**Chunking Strategy for Long Dialogues**:
+1. Split script at speaker boundaries, keeping chunks under 10k chars
+2. Generate first chunk without reference audio
+3. Use first chunk's audio + text as `ref_audio_url`/`ref_text` for subsequent chunks
+4. Concatenate WAV files (requires proper PCM extraction, not simple byte append)
+
+**Known Issues**:
+- Simple MP3 concatenation doesn't work (files are actually WAV)
+- Without reference audio, voices vary between chunks
+- Tags like `(laughs)` may not work well - plain text recommended
+
 **Provider Selection**:
 ```bash
 # In .env.local
@@ -393,6 +410,11 @@ const prediction = await replicate.predictions.create({
 **Cold Start**: First run takes ~150s (GPU spin-up), subsequent runs ~30-60s
 
 **Output**: MP3 audio file
+
+**Tested Limits**:
+- Successfully generates 5+ minute podcasts in a single call
+- Supports up to 90 minutes per call (not fully tested)
+- No chunking needed = consistent voices throughout
 
 **Tag Format**: VibeVoice does NOT support any tags!
 

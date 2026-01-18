@@ -66,7 +66,7 @@ export async function generateDialogue(newsItems: NewsItem[]): Promise<DialogueT
       model: MODEL,
       messages,
       // Note: GPT-5.2 only supports default temperature (1)
-      max_completion_tokens: 4096,
+      max_completion_tokens: 8192, // Enough for 80-100 dialogue turns
       response_format: { type: 'json_object' },
     }),
   });

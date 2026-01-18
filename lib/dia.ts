@@ -14,36 +14,40 @@ const DEBUG_MAX_CHUNKS = process.env.DEBUG_MAX_CHUNKS ? parseInt(process.env.DEB
 
 
 /**
+ * Strip ALL tags/annotations from text
+ * Testing if Dia works better with plain text (like VibeVoice)
+ */
+function stripAllAnnotations(text: string): string {
+  return text
+    .replace(/\[[^\]]+\]\s*/g, "")  // Remove [any bracketed tags]
+    .replace(/\([^)]+\)\s*/g, "")    // Remove (any parenthetical actions)
+    .trim();
+}
+
+/**
  * Convert dialogue turns to Dia script format
  * Rules from docs:
  * - Always begin with [S1]
  * - Always alternate between [S1] and [S2]
- * - Use (laughs), (sighs) etc for non-verbal
+ * - Plain text only (stripping annotations for better quality)
  */
 function formatDialogueAsScript(dialogue: DialogueTurn[]): string {
   return dialogue
     .map((turn) => {
       const speakerTag = turn.speaker === "alex" ? "[S1]" : "[S2]";
-      // Convert ElevenLabs audio tags [action] to Dia format (action)
-      const text = turn.text
-        .replace(/\[laughs\]/gi, "(laughs)")
-        .replace(/\[sighs\]/gi, "(sighs)")
-        .replace(/\[gasps\]/gi, "(gasps)")
-        .replace(/\[whispers\]/gi, "(whispers)")
-        .replace(/\[coughs\]/gi, "(coughs)")
-        .replace(/\[clears throat\]/gi, "(clears throat)")
-        .replace(/\[chuckles\]/gi, "(chuckles)")
-        .replace(/\[groans\]/gi, "(groans)");
+      const text = stripAllAnnotations(turn.text);
       return `${speakerTag} ${text}`;
     })
     .join(" ");
 }
 
 /**
- * Split dialogue into chunks targeting ~15 seconds each
- * Dia docs say: 5-20 seconds is optimal
+ * Split dialogue into chunks targeting ~40 seconds each
+ * Dia max is ~47 sec (4096 tokens), so we target 40s for safety margin
+ * ~12 turns × ~3 sec/turn ≈ 36-40 seconds
+ * Fewer chunks = better voice consistency & fewer concatenation issues
  */
-function chunkDialogue(dialogue: DialogueTurn[], turnsPerChunk = 6): DialogueTurn[][] {
+function chunkDialogue(dialogue: DialogueTurn[], turnsPerChunk = 12): DialogueTurn[][] {
   const chunks: DialogueTurn[][] = [];
   for (let i = 0; i < dialogue.length; i += turnsPerChunk) {
     chunks.push(dialogue.slice(i, i + turnsPerChunk));
@@ -52,34 +56,55 @@ function chunkDialogue(dialogue: DialogueTurn[], turnsPerChunk = 6): DialogueTur
 }
 
 /**
+ * Upload audio buffer to a temporary URL for use as audio_prompt
+ */
+async function uploadAudioForPrompt(buffer: ArrayBuffer): Promise<string> {
+  // Convert to base64 data URL - Replicate accepts these
+  const base64 = Buffer.from(buffer).toString("base64");
+  return `data:audio/wav;base64,${base64}`;
+}
+
+/**
  * Generate a single audio clip from Dia
  * Returns the raw audio buffer
  *
- * Note: Voice cloning via audio_prompt requires audio_prompt_text which
- * gets prepended to output, causing duplicate speech. We rely on seed only.
+ * Uses audio_prompt from previous chunk for voice consistency
  */
 async function generateSingleClip(
   replicate: Replicate,
   text: string,
   clipIndex: number,
-  totalClips: number
+  totalClips: number,
+  referenceAudio?: string, // Data URL of reference audio for voice cloning
+  referenceText?: string   // Transcript of reference audio (required with audio_prompt)
 ): Promise<ArrayBuffer> {
   console.log(`[Dia] Clip ${clipIndex + 1}/${totalClips}: "${text.slice(0, 60)}..." (${text.length} chars)`);
+  if (referenceAudio) {
+    console.log(`[Dia] Using reference audio for voice consistency`);
+  }
 
   const startTime = Date.now();
 
+  // Build input with optional audio_prompt
+  const input: Record<string, unknown> = {
+    text,
+    temperature: 1.3,
+    cfg_scale: 3,
+    max_new_tokens: 4096,
+    speed_factor: 1.0,
+    seed: VOICE_SEED,
+  };
+
+  // Add reference audio for voice cloning
+  if (referenceAudio && referenceText) {
+    input.audio_prompt = referenceAudio;
+    input.audio_prompt_text = referenceText;
+    input.max_audio_prompt_seconds = 15; // Use 15s of reference
+  }
+
   const output = await replicate.run(
     "zsxkib/dia:2119e338ca5c0dacd3def83158d6c80d431f2ac1024146d8cca9220b74385599",
-    {
-      input: {
-        text,
-        temperature: 1.3,
-        cfg_scale: 3,
-        max_new_tokens: 4096,
-        speed_factor: 1.0,
-        seed: VOICE_SEED, // Fixed seed for voice consistency across chunks
-      },
-    }
+    { input }
   );
 
   const elapsed = Date.now() - startTime;
@@ -248,12 +273,28 @@ export async function generateAudio(dialogue: DialogueTurn[]): Promise<Blob> {
   const scripts = chunks.map(c => formatDialogueAsScript(c));
   const buffers: ArrayBuffer[] = [];
 
-  // Generate all clips in parallel - seed provides voice consistency
-  const clipPromises = scripts.map((script, i) =>
-    generateSingleClip(replicate, script, i, scripts.length)
-  );
-  const clipBuffers = await Promise.all(clipPromises);
-  buffers.push(...clipBuffers);
+  // Generate clips sequentially, using first clip as voice reference for consistency
+  let referenceAudioUrl: string | undefined;
+  let referenceText: string | undefined;
+
+  for (let i = 0; i < scripts.length; i++) {
+    const buffer = await generateSingleClip(
+      replicate,
+      scripts[i],
+      i,
+      scripts.length,
+      referenceAudioUrl,
+      referenceText
+    );
+    buffers.push(buffer);
+
+    // Use first clip as reference for all subsequent clips
+    if (i === 0) {
+      referenceAudioUrl = await uploadAudioForPrompt(buffer);
+      referenceText = scripts[0]; // Pass the transcript of the first clip
+      console.log(`[Dia] First clip saved as voice reference (${Math.round(buffer.byteLength / 1024)} KB)`);
+    }
+  }
 
   // Concatenate if multiple
   let finalBuffer: ArrayBuffer;
