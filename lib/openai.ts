@@ -8,6 +8,7 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 // Use the faster chat model for MVP; can switch to 'gpt-5.2' for better quality
 const MODEL = 'gpt-5.2-chat-latest';
+const METADATA_MODEL = 'gpt-5-nano';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -27,6 +28,109 @@ interface ChatCompletionResponse {
     completion_tokens: number;
     total_tokens: number;
   };
+}
+
+interface EpisodeMetadata {
+  title: string;
+  excerpt: string;
+}
+
+function truncateText(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  return text.slice(0, maxChars - 1).trimEnd() + '…';
+}
+
+function buildMetadataPrompt(
+  newsItems: NewsItem[],
+  dialogue: DialogueTurn[],
+  inputSummary?: string
+): ChatMessage[] {
+  const topics = newsItems.slice(0, 6).map((item, index) => {
+    const summary = item.detailedSummary || item.snippet || '';
+    return `${index + 1}. ${item.title}\n   ${truncateText(summary, 220)}`;
+  }).join('\n\n');
+
+  const dialogueSample = dialogue.slice(0, 8).map((turn) => {
+    return `${turn.speaker.toUpperCase()}: ${truncateText(turn.text, 140)}`;
+  }).join('\n');
+
+  const system = `You generate short podcast metadata.
+Return ONLY JSON with keys "title" and "excerpt".
+- title: <= 60 characters, punchy, clear.
+- excerpt: 1-2 sentences, <= 160 characters, enticing but accurate.
+No emojis, no quotes.`;
+
+  const user = `Topics:
+${topics || 'No topics provided.'}
+
+Input summary:
+${inputSummary || 'N/A'}
+
+Dialogue sample:
+${dialogueSample || 'N/A'}
+`;
+
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+}
+
+export async function generateEpisodeMetadata(
+  newsItems: NewsItem[],
+  dialogue: DialogueTurn[],
+  inputSummary?: string
+): Promise<EpisodeMetadata | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    console.warn('[OpenAI] OPENAI_API_KEY missing, skipping metadata generation');
+    return null;
+  }
+
+  const messages = buildMetadataPrompt(newsItems, dialogue, inputSummary);
+  console.log(`[OpenAI] Calling ${METADATA_MODEL} for episode metadata...`);
+
+  const response = await fetch(OPENAI_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: METADATA_MODEL,
+      messages,
+      max_completion_tokens: 200,
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[OpenAI] Metadata API error:', error);
+    return null;
+  }
+
+  const data: ChatCompletionResponse = await response.json();
+  const content = data.choices[0]?.message?.content;
+
+  if (!content) return null;
+
+  try {
+    const parsed = JSON.parse(content);
+    const title = String(parsed.title || '').trim();
+    const excerpt = String(parsed.excerpt || '').trim();
+    if (!title || !excerpt) {
+      return null;
+    }
+    return {
+      title: truncateText(title, 60),
+      excerpt: truncateText(excerpt, 160),
+    };
+  } catch (err) {
+    console.error('[OpenAI] Failed to parse metadata JSON:', err);
+    return null;
+  }
 }
 
 /**

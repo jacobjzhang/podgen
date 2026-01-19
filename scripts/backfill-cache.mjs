@@ -53,6 +53,73 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf-8"));
 }
 
+function truncateText(text, maxChars) {
+  if (!text) return "";
+  if (text.length <= maxChars) return text;
+  return text.slice(0, maxChars - 1).trimEnd() + "…";
+}
+
+async function generateMetadata({ topics, inputSummary, dialogueSample, apiKey }) {
+  if (!apiKey) return null;
+
+  const system = `You generate short podcast metadata.
+Return ONLY JSON with keys "title" and "excerpt".
+- title: <= 60 characters, punchy, clear.
+- excerpt: 1-2 sentences, <= 160 characters, enticing but accurate.
+No emojis, no quotes.`;
+
+  const user = `Topics:
+${topics || "N/A"}
+
+Input summary:
+${inputSummary || "N/A"}
+
+Dialogue sample:
+${dialogueSample || "N/A"}
+`;
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-5-nano",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      max_completion_tokens: 200,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error("[OpenAI] metadata error:", error);
+    return null;
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) return null;
+
+  try {
+    const parsed = JSON.parse(content);
+    const title = String(parsed.title || "").trim();
+    const excerpt = String(parsed.excerpt || "").trim();
+    if (!title || !excerpt) return null;
+    return {
+      title: truncateText(title, 60),
+      excerpt: truncateText(excerpt, 160),
+    };
+  } catch (err) {
+    console.error("[OpenAI] metadata parse error:", err);
+    return null;
+  }
+}
+
 async function ensureBucket(supabase, bucket) {
   const { data, error } = await supabase.storage.getBucket(bucket);
   if (data && !error) return;
@@ -88,6 +155,7 @@ async function main() {
     process.env.SUPABASE_PROJECT_URL;
   const supabaseServiceRoleKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+  const openaiApiKey = process.env.OPENAI_API_KEY;
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
     throw new Error(
@@ -98,11 +166,16 @@ async function main() {
   const args = new Set(process.argv.slice(2));
   const dryRun = args.has("--dry-run");
   const skipUpload = args.has("--skip-upload");
+  const skipMetadata = args.has("--skip-metadata");
   const limitArg = process.argv.find((a) => a.startsWith("--limit="));
   const limit = limitArg ? Number(limitArg.split("=")[1]) : null;
   const bucket = "episodes";
 
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+  if (!openaiApiKey && !skipMetadata) {
+    console.warn("[Backfill] OPENAI_API_KEY missing; metadata generation will be skipped.");
+  }
 
   if (!fs.existsSync(CACHE_DIR)) {
     throw new Error("No .cache directory found");
@@ -210,6 +283,7 @@ async function main() {
 
     // Attach sources from news cache when possible
     let sources = [];
+    let topicsSummary = "";
     const newsKey = getNewsKey(interests);
     const newsPath = path.join(CACHE_DIR, newsKey);
     if (fs.existsSync(newsPath)) {
@@ -223,6 +297,12 @@ async function main() {
         );
       }
 
+      const topicLines = newsItems.map((item) => {
+        const summary = item.detailedSummary || item.snippet || "";
+        return `- ${item.title}: ${truncateText(summary, 180)}`;
+      });
+      topicsSummary = topicLines.join("\n");
+
       sources = newsItems.map((item) => {
         const enriched = enrichedMap.get(item.url || item.title);
         return {
@@ -235,6 +315,7 @@ async function main() {
         };
       });
     } else if (interests.length > 0) {
+      topicsSummary = interests.map((value) => `- ${value}`).join("\n");
       sources = interests.map((value) => {
         const url = isUrl(value) ? value : null;
         return {
@@ -254,6 +335,37 @@ async function main() {
         .insert(sources);
       if (sourcesError) {
         console.error(`[ERROR] sources ${audioId}:`, sourcesError);
+      }
+    }
+
+    if (!skipMetadata) {
+      const dialogueSample = dialogueInfo?.dialogue
+        ? dialogueInfo.dialogue
+            .slice(0, 6)
+            .map((turn) => {
+              return `${String(turn.speaker).toUpperCase()}: ${truncateText(String(turn.text || ""), 120)}`;
+            })
+            .join("\n")
+        : "";
+
+      const metaResult = await generateMetadata({
+        topics: topicsSummary,
+        inputSummary,
+        dialogueSample,
+        apiKey: openaiApiKey,
+      });
+
+      if (metaResult && !dryRun) {
+        const { error: updateError } = await supabase
+          .from("episodes")
+          .update({
+            title: metaResult.title,
+            excerpt: metaResult.excerpt,
+          })
+          .eq("audio_cache_key", audioId);
+        if (updateError) {
+          console.error(`[ERROR] metadata update ${audioId}:`, updateError);
+        }
       }
     }
 
