@@ -25,6 +25,21 @@ export default function InterestPicker({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const normalizeUrl = (value: string) => {
+    if (/^https?:\/\//i.test(value)) return value;
+    if (/^www\./i.test(value)) return `https://${value}`;
+    return value;
+  };
+
+  const isUrlInput = (value: string) => {
+    return /^https?:\/\//i.test(value) || /^www\./i.test(value);
+  };
+
+  const makeCustomId = (type: 'url' | 'prompt', value: string) => {
+    const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+    return `custom:${type}:${slug || Date.now()}`;
+  };
+
   // Fetch all interests on mount
   useEffect(() => {
     fetch('/api/interests')
@@ -84,6 +99,26 @@ export default function InterestPicker({
     }
   };
 
+  const handleCustomSelect = () => {
+    const trimmed = query.trim();
+    if (!trimmed || selectedInterests.length >= maxSelections) return;
+
+    const isUrl = isUrlInput(trimmed);
+    const value = isUrl ? normalizeUrl(trimmed) : trimmed;
+    if (selectedInterests.some(s => s.label === value)) {
+      setQuery('');
+      setIsOpen(false);
+      return;
+    }
+
+    const customInterest: Interest = {
+      id: makeCustomId(isUrl ? 'url' : 'prompt', value),
+      label: value,
+      category: 'Custom',
+    };
+    handleSelect(customInterest);
+  };
+
   const handleRemove = (interestId: string) => {
     onSelectionChange(selectedInterests.filter(i => i.id !== interestId));
   };
@@ -91,64 +126,82 @@ export default function InterestPicker({
   return (
     <div className="w-full">
       {/* Selected interests as pills */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        {selectedInterests.map(interest => (
-          <span
-            key={interest.id}
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium"
-          >
-            {interest.label}
-            <button
-              type="button"
-              onClick={() => handleRemove(interest.id)}
-              disabled={disabled}
-              className="ml-1 text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+      {selectedInterests.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {selectedInterests.map(interest => (
+            <span
+              key={interest.id}
+              className="inline-flex items-center gap-2 px-3 py-2 bg-[var(--accent)]/15 text-[var(--accent)] rounded-lg text-sm font-medium border border-[var(--accent)]/30"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </span>
-        ))}
-      </div>
+              {interest.label}
+              <button
+                type="button"
+                onClick={() => handleRemove(interest.id)}
+                disabled={disabled}
+                className="text-[var(--accent)]/70 hover:text-[var(--accent)] disabled:opacity-50 transition"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Input with dropdown */}
       <div className="relative">
-        <input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && query.trim().length > 0 && filteredInterests.length > 0) {
-              e.preventDefault();
-              handleSelect(filteredInterests[0]);
+        <div className="relative">
+          <svg
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && query.trim().length > 0) {
+                e.preventDefault();
+                if (isUrlInput(query.trim())) {
+                  handleCustomSelect();
+                } else if (filteredInterests.length > 0) {
+                  handleSelect(filteredInterests[0]);
+                } else {
+                  handleCustomSelect();
+                }
+              }
+            }}
+            onFocus={() => setIsOpen(true)}
+            placeholder={
+              selectedInterests.length >= maxSelections
+                ? `Maximum ${maxSelections} topics selected`
+                : 'Search topics or paste a URL...'
             }
-          }}
-          onFocus={() => setIsOpen(true)}
-          placeholder={
-            selectedInterests.length >= maxSelections
-              ? `Maximum ${maxSelections} interests selected`
-              : 'Search for topics...'
-          }
-          disabled={disabled || selectedInterests.length >= maxSelections}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-        />
+            disabled={disabled || selectedInterests.length >= maxSelections}
+            className="w-full pl-12 pr-4 py-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed transition"
+          />
+        </div>
 
         {/* Dropdown */}
         {isOpen && !disabled && selectedInterests.length < maxSelections && (
           <div
             ref={dropdownRef}
-            className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-hidden"
+            className="absolute z-20 w-full mt-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden"
           >
             {/* Category filters */}
-            <div className="flex gap-1 p-2 border-b overflow-x-auto">
+            <div className="flex gap-2 p-3 border-b border-[var(--border)] overflow-x-auto scrollbar-none">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition ${
                   !selectedCategory
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-[var(--accent)] text-[var(--bg-primary)]'
+                    : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                 }`}
               >
                 All
@@ -157,10 +210,10 @@ export default function InterestPicker({
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition ${
                     selectedCategory === cat
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-[var(--accent)] text-[var(--bg-primary)]'
+                      : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                   }`}
                 >
                   {cat}
@@ -169,9 +222,26 @@ export default function InterestPicker({
             </div>
 
             {/* Interest list */}
-            <div className="max-h-60 overflow-y-auto">
+            <div className="max-h-64 overflow-y-auto">
+              {query.trim().length > 0 && (
+                <button
+                  onClick={handleCustomSelect}
+                  className="w-full px-4 py-3 text-left hover:bg-[var(--bg-hover)] flex justify-between items-center border-b border-[var(--border)] transition"
+                >
+                  <span className="font-medium text-[var(--text-primary)]">
+                    {isUrlInput(query.trim())
+                      ? `Use URL: ${normalizeUrl(query.trim())}`
+                      : `"${query.trim()}"`
+                    }
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)]">
+                    Custom
+                  </span>
+                </button>
+              )}
+
               {filteredInterests.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
+                <div className="p-6 text-center text-[var(--text-muted)]">
                   No matching topics found
                 </div>
               ) : (
@@ -179,10 +249,10 @@ export default function InterestPicker({
                   <button
                     key={interest.id}
                     onClick={() => handleSelect(interest)}
-                    className="w-full px-4 py-2.5 text-left hover:bg-indigo-50 flex justify-between items-center"
+                    className="w-full px-4 py-3 text-left hover:bg-[var(--bg-hover)] flex justify-between items-center transition"
                   >
-                    <span className="font-medium">{interest.label}</span>
-                    <span className="text-xs text-gray-500">{interest.category}</span>
+                    <span className="font-medium text-[var(--text-primary)]">{interest.label}</span>
+                    <span className="text-xs text-[var(--text-muted)]">{interest.category}</span>
                   </button>
                 ))
               )}
@@ -191,7 +261,7 @@ export default function InterestPicker({
         )}
       </div>
 
-      <p className="mt-2 text-sm text-gray-500">
+      <p className="mt-3 text-sm text-[var(--text-muted)]">
         {selectedInterests.length}/{maxSelections} topics selected
       </p>
     </div>

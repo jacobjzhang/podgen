@@ -76,79 +76,91 @@ export default function EpisodeHistory({ onSelectEpisode, currentEpisodeId }: Ep
 
   if (loading) {
     return (
-      <div className="p-4 text-center text-gray-500 text-sm">
-        Loading history...
+      <div className="py-8 text-center">
+        <div className="w-6 h-6 border-2 border-[var(--accent)]/30 border-t-[var(--accent)] rounded-full animate-spin mx-auto" />
+        <p className="text-[var(--text-muted)] text-sm mt-3">Loading...</p>
       </div>
     );
   }
 
   if (episodes.length === 0) {
     return (
-      <div className="p-4 text-center text-gray-500 text-sm">
-        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+      <div className="py-8 text-center">
+        <div className="w-12 h-12 rounded-xl bg-[var(--bg-tertiary)] flex items-center justify-center mx-auto mb-3">
+          <svg className="w-6 h-6 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
           </svg>
         </div>
-        <p>No episodes yet</p>
-        <p className="text-xs mt-1">Generate your first podcast!</p>
+        <p className="text-[var(--text-muted)] text-sm">No episodes yet</p>
+        <p className="text-[var(--text-muted)]/60 text-xs mt-1">Generate your first podcast</p>
       </div>
     );
   }
 
   return (
-    <div className="divide-y divide-gray-100">
-      {episodes.map((episode) => (
-        <button
-          key={episode.id}
-          onClick={() => handlePlayEpisode(episode)}
-          disabled={loadingId === episode.id}
-          className={`w-full p-3 text-left hover:bg-gray-50 transition-colors ${
-            currentEpisodeId === episode.id ? 'bg-indigo-50' : ''
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-              currentEpisodeId === episode.id
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-500'
-            }`}>
-              {loadingId === episode.id ? (
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                {episode.interests.slice(0, 2).map((interest, i) => (
-                  <span
-                    key={i}
-                    className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded"
-                  >
-                    {interest}
-                  </span>
-                ))}
-                {episode.interests.length > 2 && (
-                  <span className="text-xs text-gray-400">
-                    +{episode.interests.length - 2}
-                  </span>
+    <div className="space-y-1">
+      {episodes.map((episode) => {
+        const isCurrent = currentEpisodeId === episode.id;
+        const isLoading = loadingId === episode.id;
+
+        return (
+          <button
+            key={episode.id}
+            onClick={() => handlePlayEpisode(episode)}
+            disabled={isLoading}
+            className={`w-full p-3 rounded-lg text-left transition-all group ${
+              isCurrent
+                ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/30'
+                : 'hover:bg-[var(--bg-hover)] border border-transparent'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition ${
+                isCurrent
+                  ? 'bg-[var(--accent)] text-[var(--bg-primary)]'
+                  : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] group-hover:bg-[var(--bg-elevated)] group-hover:text-[var(--text-secondary)]'
+              }`}>
+                {isLoading ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                <span>{formatDuration(episode.duration)}</span>
-                <span>·</span>
-                <span>{formatDate(episode.createdAt)}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {episode.interests.slice(0, 2).map((interest, i) => (
+                    <span
+                      key={i}
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        isCurrent
+                          ? 'bg-[var(--accent)]/20 text-[var(--accent)]'
+                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
+                      }`}
+                    >
+                      {interest}
+                    </span>
+                  ))}
+                  {episode.interests.length > 2 && (
+                    <span className="text-xs text-[var(--text-muted)]">
+                      +{episode.interests.length - 2}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-1.5 text-xs text-[var(--text-muted)]">
+                  <span>{formatDuration(episode.duration)}</span>
+                  <span className="opacity-50">·</span>
+                  <span>{formatDate(episode.createdAt)}</span>
+                </div>
               </div>
             </div>
-          </div>
-        </button>
-      ))}
+          </button>
+        );
+      })}
     </div>
   );
 }
