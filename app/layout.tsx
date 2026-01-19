@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
+import { AppProvider } from "@/context/AppContext";
+import AppShell from "@/components/AppShell";
 
 const playfair = Playfair_Display({
   variable: "--font-display",
@@ -29,7 +31,11 @@ export default function RootLayout({
       <body
         className={`${playfair.variable} ${sourceSans.variable} antialiased`}
       >
-        {children}
+        <AppProvider>
+          <AppShell>
+            {children}
+          </AppShell>
+        </AppProvider>
       </body>
     </html>
   );

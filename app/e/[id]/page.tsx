@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import EpisodePageClient from '@/components/EpisodePageClient';
+import EpisodeContent from './EpisodeContent';
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -165,7 +165,7 @@ export default async function EpisodePage({ params }: PageProps) {
   const duration = formatDuration(episode.audio_duration_seconds);
 
   return (
-    <EpisodePageClient
+    <EpisodeContent
       episode={{
         id: episode.id,
         title: episode.title || 'Untitled Episode',
@@ -177,7 +177,6 @@ export default async function EpisodePage({ params }: PageProps) {
           title: s.title,
           url: s.url,
           snippet: s.snippet,
-          source_type: s.source_type,
         })),
         transcriptText,
       }}
