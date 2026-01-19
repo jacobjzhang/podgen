@@ -25,7 +25,7 @@ export default function Home() {
   const [historyKey, setHistoryKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
-  const [speakerCount, setSpeakerCount] = useState(3);
+  const [speakerCount, setSpeakerCount] = useState(4);
 
   // Close sidebar on larger screens
   useEffect(() => {

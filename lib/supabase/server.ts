@@ -17,10 +17,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export function createSupabaseServerClient() {
-  const cookieStore = cookies();
+const url: string = supabaseUrl;
+const key: string = supabaseAnonKey;
 
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient(url, key, {
     cookies: {
       get(name) {
         return cookieStore.get(name)?.value;
