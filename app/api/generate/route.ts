@@ -5,6 +5,7 @@ import { enrichNewsItems } from '@/lib/article-enricher';
 import { generateDialogue, estimateDuration } from '@/lib/openai';
 import { generateAudioDataUrl, getCurrentProvider } from '@/lib/tts';
 import { CustomInput, GenerateRequest, GenerateResponse, NewsItem } from '@/lib/types';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import {
   getCachedNews,
   setCachedNews,
@@ -189,10 +190,81 @@ export async function POST(request: Request) {
       console.log('[Generate] Audio loaded from cache');
     }
 
-    // Save episode metadata for history sidebar
+    // Save episode metadata for history sidebar + Supabase
     if (isNewAudio) {
       const audioKey = getAudioKey(dialogue);
       saveEpisodeMetadata(audioKey, interests, duration, enrichedNews.length, dialogue.length);
+
+      const inputSummary = [
+        ...interests,
+        ...customInputs.map(input => input.value),
+      ].filter(Boolean).join(', ');
+
+      const audioFormat = audioUrl.startsWith('data:')
+        ? audioUrl.match(/^data:([^;]+);/)?.[1] || null
+        : audioUrl.endsWith('.wav')
+        ? 'audio/wav'
+        : audioUrl.endsWith('.mp3')
+        ? 'audio/mpeg'
+        : null;
+
+      const audioUrlForDb = audioUrl.startsWith('data:') ? null : audioUrl;
+
+      try {
+        const { data: episodeRow, error: episodeError } = await supabaseAdmin
+          .from('episodes')
+          .insert({
+            audio_cache_key: audioKey,
+            owner_user_id: null,
+            title: inputSummary || 'Untitled Episode',
+            excerpt: null,
+            audio_url: audioUrlForDb,
+            audio_format: audioFormat,
+            audio_duration_seconds: duration || null,
+            tts_provider: getCurrentProvider(),
+            speaker_count: speakerCount,
+            status: 'ready',
+            public: false,
+            share_slug: null,
+            input_summary: inputSummary || null,
+            news_count: enrichedNews.length,
+            dialogue_turns: dialogue.length,
+          })
+          .select('id')
+          .single();
+
+        if (episodeError) {
+          console.error('[Generate] Supabase episode insert failed:', episodeError);
+        } else if (episodeRow?.id) {
+          const sources = enrichedNews.map((item) => {
+            const sourceType =
+              item.source === 'User URL'
+                ? 'url'
+                : item.source === 'User prompt'
+                ? 'prompt'
+                : 'news';
+            return {
+              episode_id: episodeRow.id,
+              source_type: sourceType,
+              title: item.title,
+              url: item.url || null,
+              snippet: item.snippet,
+              detailed_summary: item.detailedSummary || item.snippet,
+            };
+          });
+
+          if (sources.length > 0) {
+            const { error: sourcesError } = await supabaseAdmin
+              .from('episode_sources')
+              .insert(sources);
+            if (sourcesError) {
+              console.error('[Generate] Supabase sources insert failed:', sourcesError);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[Generate] Supabase write failed:', err);
+      }
     }
 
     const totalTime = Date.now() - totalStart;
