@@ -11,6 +11,8 @@ This is a living roadmap. Priorities may shift based on user feedback and unit e
 - **Audio QA**: automated checks for length, truncation, silence, and missing chunks.
 - **Discoverability metadata**: auto-generate titles + short excerpts for each episode.
 - **Observability**: latency, cost per episode, failure rate, and cache hit rate.
+- **One-off mode (no auth)**: drop links/files/text → generate a single episode → share link.
+- **Share pages**: public episode pages with OG tags, title/excerpt, and easy sharing.
 
 ## Mid-Term (3-9 months)
 - **Personalization engine**: listening habits, topic weighting, host style tuning.
@@ -19,6 +21,8 @@ This is a living roadmap. Priorities may shift based on user feedback and unit e
 - **Multilingual**: bilingual shows and region-specific news.
 - **Audio post**: intro/outro music, leveling, noise reduction, chapters.
 - **Dynamic ad insertion**: injected audio ads with targeting and frequency caps.
+- **Profile mode**: persist interests + saved sources; one-tap “generate now”.
+- **Distribution loops**: short clips, embeds, and “generate your own” CTAs.
 
 ## Long-Term (9-24 months)
 - **Creator marketplace**: sell show templates, host styles, and branded voices.
