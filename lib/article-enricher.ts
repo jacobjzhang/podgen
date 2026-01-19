@@ -13,7 +13,14 @@ interface EnrichedNewsItem extends NewsItem {
  * Fetch article content from URL
  * Uses a simple fetch with timeout, extracts text content
  */
-async function fetchArticleContent(url: string): Promise<string | null> {
+async function fetchArticleContent(
+  url: string,
+  maxChars: number = 8000
+): Promise<string | null> {
+  if (!url || url.trim().length === 0) {
+    return null;
+  }
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
@@ -59,8 +66,8 @@ async function fetchArticleContent(url: string): Promise<string | null> {
       .replace(/\s+/g, ' ')
       .trim();
 
-    // Limit to first ~8000 chars (roughly 2000 tokens) to stay within context
-    return text.slice(0, 8000);
+    // Limit to first ~maxChars chars to stay within context
+    return text.slice(0, maxChars);
   } catch (error) {
     console.log(`[Enricher] Error fetching ${url}:`, error instanceof Error ? error.message : 'Unknown');
     return null;
@@ -133,6 +140,30 @@ async function enrichNewsItem(
   apiKey: string
 ): Promise<EnrichedNewsItem> {
   console.log(`[Enricher] Enriching: "${item.title.slice(0, 50)}..."`);
+
+  if (item.source === 'User URL') {
+    const content = await fetchArticleContent(item.url, 16000);
+    if (content && content.length >= 200) {
+      console.log(`[Enricher] Using raw article text for user URL (${content.length} chars)`);
+      return {
+        ...item,
+        detailedSummary: content,
+      };
+    }
+
+    console.log(`[Enricher] Insufficient content (${content?.length || 0} chars), using snippet`);
+    return {
+      ...item,
+      detailedSummary: item.snippet,
+    };
+  }
+
+  if (!item.url || item.url.trim().length === 0) {
+    return {
+      ...item,
+      detailedSummary: item.detailedSummary || item.snippet,
+    };
+  }
 
   // Fetch article content
   const content = await fetchArticleContent(item.url);

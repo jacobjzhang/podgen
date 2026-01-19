@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Podgen
 
-## Getting Started
+Generate podcast-style dialogue and audio from topics, URLs, or free-form prompts.
 
-First, run the development server:
+## Features
+- Topic search with a curated list, plus custom URL or prompt input.
+- 1-4 speakers (3-4 speakers require VibeVoice).
+- Multiple TTS providers: VibeVoice (fal/replicate), Dia (fal/replicate), ElevenLabs.
+- Caching for news, dialogue, and audio to reduce cost.
 
+## Quickstart
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Copy env template:
+   ```bash
+   cp .env.example .env.local
+   ```
+3. Fill in keys in `.env.local`.
+4. Start dev server:
+   ```bash
+   npm run dev
+   ```
+5. Open `http://localhost:3000`.
+
+## Usage Notes
+### Topics, URLs, and Prompts
+- The search bar accepts:
+  - A topic from the list.
+  - A URL (we extract raw text).
+  - A free-form prompt (used as-is).
+- URLs skip GPT-5-nano summarization. We pass raw extracted text (up to ~16k chars) directly into dialogue generation. If extraction fails, we fall back to the snippet.
+
+### Speaker Count
+- Choose 1-4 speakers in the UI.
+- 3-4 speakers require `TTS_PROVIDER=vibevoice` or `TTS_PROVIDER=vibevoice-fal`.
+- Speakers map to Alex, Jordan, Casey, Riley in that order.
+
+### TTS Providers
+Set `TTS_PROVIDER` in `.env.local`:
+- `vibevoice` (Replicate, 1.5B)
+- `vibevoice-fal` (fal.ai, 1.5B)
+- `dia-fal` (default if unset)
+- `dia-replicate`
+- `elevenlabs`
+
+Note: VibeVoice does not support tags like `[laughs]` or `(laughs)`; all tags are stripped before generation.
+
+## Environment Variables
+Required:
+- `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`
+- `OPENAI_API_KEY`
+
+Provider-specific:
+- `FAL_API_KEY` (dia-fal, vibevoice-fal)
+- `REPLICATE_API_TOKEN` (dia-replicate, vibevoice)
+- `ELEVENLABS_API_KEY` (elevenlabs)
+
+Optional speaker presets:
+- `VIBEVOICE_SPEAKER_0_PRESET`..`VIBEVOICE_SPEAKER_3_PRESET` (fal)
+- `VIBEVOICE_SPEAKER_0_PRESET_REPLICATE`..`_3_` (replicate)
+
+## Development
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
+npm run build
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

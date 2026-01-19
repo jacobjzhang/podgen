@@ -70,6 +70,10 @@ POST /v3/keywords_data/google_trends/explore/live
 3. GPT-5-nano extracts: summary, key details, quotes, numbers
 4. Enriched data passed to dialogue generation
 
+**User-provided URLs**:
+- For `source === 'User URL'`, we skip GPT-5-nano and pass the raw extracted text directly (up to ~16,000 chars).
+- If extraction is too short or fails, we fall back to the snippet.
+
 **Prompt Strategy**:
 - System prompt asks for JSON output with specific fields
 - Focus on "interesting" details that spark discussion
@@ -123,6 +127,7 @@ POST https://api.openai.com/v1/chat/completions
 - User prompt contains news summaries with source attribution
 - Output format: JSON object with `dialogue` array (not raw array - json_object mode requires top-level object)
 - Include ElevenLabs audio tags in dialogue: `[laughs]`, `[sighs]`, `[excited]`, etc.
+- Encourage banter, side comments, and non-linear story order for a more natural flow
 
 **Notes**:
 - JSON mode requires explicit instruction in prompt to output JSON
@@ -265,9 +270,11 @@ const output = await replicate.run("zsxkib/dia:2119e338ca5c0dacd3def83158d6c80d4
 
 **Pricing**: ~$0.029 per run (~30s generation time)
 
-**Feature Flag**:
+**Provider Selection**:
 ```bash
-USE_VIBEVOICE=true  # Set to enable Dia instead of ElevenLabs
+TTS_PROVIDER=dia-replicate
+DIA_USE_REPLICATE=true   # Force Replicate even if TTS_PROVIDER=dia-fal
+USE_VIBEVOICE=true       # Legacy flag (maps to dia-replicate)
 ```
 
 **Trade-offs vs ElevenLabs**:
@@ -326,14 +333,15 @@ const result = await fal.subscribe("fal-ai/dia-tts", {
 **Advantages over Replicate**:
 - Cleaner SDK with `fal.subscribe()` pattern
 - Built-in queue management and progress updates
-- MP3 output (smaller files than WAV)
 - Simpler response format (direct URL)
 
 **Tested Limits & Findings**:
-- Max input: **10,000 characters** per call
+- Max input: **10,000 characters** per call (verify against current fal limits)
 - Output is WAV (not MP3 as docs suggest), ~2MB per ~20s
 - No `max_new_tokens` parameter exposed - fal.ai handles internally
 - Voice cloning: `ref_audio_url` + `ref_text` for consistency across chunks
+- Observed truncation: some runs return much shorter audio than the script implies (~30s for ~2.7k chars)
+- Observed missing lines when using voice-clone chunking even when scripts are correct
 
 **Chunking Strategy for Long Dialogues**:
 1. Split script at speaker boundaries, keeping chunks under 10k chars
@@ -344,6 +352,8 @@ const result = await fal.subscribe("fal-ai/dia-tts", {
 **Known Issues**:
 - Simple MP3 concatenation doesn't work (files are actually WAV)
 - Without reference audio, voices vary between chunks
+- Voice-clone chunking can skip dialogue in the middle of a chunk
+- Long single-shot generations can truncate early
 - Tags like `(laughs)` may not work well - plain text recommended
 
 **Provider Selection**:
@@ -360,61 +370,43 @@ TTS_PROVIDER=elevenlabs    # Use ElevenLabs
 
 **Purpose**: Native multi-speaker dialogue generation - no chunking or concatenation needed
 
-**Documentation**: https://replicate.com/microsoft/vibevoice
+**Documentation**:
+- https://replicate.com/microsoft/vibevoice
+- https://fal.ai/models/fal-ai/vibevoice
 
 **Why VibeVoice over Dia**:
-- Native multi-speaker support (up to 4 speakers in one generation)
-- Up to 90 minutes of audio in a single call
-- Built-in voice presets with consistent identity
-- No chunking/concatenation = no voice consistency issues
+- Native multi-speaker support (1-4 speakers in one generation)
+- Single-pass generation (no chunking/concatenation)
+- Consistent voices across the whole episode
+- Better fit for long-form dialogue than Dia
 
-**Hosting**: Replicate (also available on fal.ai)
+**Hosting**: Replicate or fal.ai
 
 **Authentication**:
-- API token via Replicate client
-- Environment variable: `REPLICATE_API_TOKEN`
+- Replicate: `REPLICATE_API_TOKEN`
+- fal.ai: `FAL_API_KEY`
 
 **Script Format**:
-```
-Speaker 1: First speaker's dialogue here.
-Speaker 2: Second speaker responds.
-Speaker 1: Back to first speaker.
-```
+- Replicate: `[S1] Hello ... [S2] Hi ...` (1-indexed tags, space-separated)
+- fal.ai: `Speaker 0: ...` (0-indexed, one line per turn)
 
 **Voice Presets**:
-| Voice | Description |
-|-------|-------------|
-| `en-Frank_man` | Male voice (used for Alex) |
-| `en-Alice_woman` | Female voice (used for Jordan) |
-| `en-Carter_man` | Alternative male |
-| `en-Maya_woman` | Alternative female |
-| `en-Mary_woman_bgm` | Female with background music |
-
-**API Usage** (via Replicate):
-```javascript
-const prediction = await replicate.predictions.create({
-  version: "624421f6fdd4122d0b3ff391ff3449f09db9ad4927167110a4c4b104fa37f728",
-  input: {
-    script: "Speaker 1: Hello!\nSpeaker 2: Hi there!",
-    scale: 1.3,
-    speaker_1: "en-Frank_man",
-    speaker_2: "en-Alice_woman",
-  },
-});
-```
+- Replicate presets (examples): `en-Frank_man`, `en-Alice_woman`, `en-Carter_man`, `en-Maya_woman`
+- fal.ai presets (examples): `Frank [EN]`, `Alice [EN]`
+- Both are configurable via env vars.
 
 **Pricing**:
 - Replicate: ~$0.10 per run (~$0.001/second)
 - fal.ai: $0.04 per minute
 
-**Cold Start**: First run takes ~150s (GPU spin-up), subsequent runs ~30-60s
-
-**Output**: MP3 audio file
+**Output**:
+- Replicate: WAV
+- fal.ai: MP3
 
 **Tested Limits**:
-- Successfully generates 5+ minute podcasts in a single call
-- Supports up to 90 minutes per call (not fully tested)
-- No chunking needed = consistent voices throughout
+- Supports 1-4 speakers
+- Replicate: long-form (reported up to ~90 minutes per call; not fully tested)
+- fal.ai: large scripts per call (code currently assumes ~30k chars; verify with current limits)
 
 **Tag Format**: VibeVoice does NOT support any tags!
 
@@ -438,7 +430,8 @@ Any `[tags]` will be spoken literally, so our code strips them all.
 **Provider Selection** (updated):
 ```bash
 # In .env.local
-TTS_PROVIDER=vibevoice     # Recommended - native dialogue
+TTS_PROVIDER=vibevoice      # Replicate 1.5B
+TTS_PROVIDER=vibevoice-fal  # fal.ai 1.5B
 TTS_PROVIDER=dia-fal       # Dia via fal.ai (default)
 TTS_PROVIDER=dia-replicate # Dia via Replicate
 TTS_PROVIDER=elevenlabs    # ElevenLabs (highest quality, most expensive)
@@ -452,10 +445,10 @@ TTS_PROVIDER=elevenlabs    # ElevenLabs (highest quality, most expensive)
 - **Why**: Single deployment, API routes co-located with frontend
 - **Trade-off**: Less separation of concerns, but simpler for MVP
 
-### 2. Static Interest List
-- **Why**: Avoid complexity of dynamic autocomplete/search
-- **Trade-off**: Limited topics, but curated for quality
-- **Future**: Could use DataForSEO trending topics API
+### 2. Topic Inputs (Curated + Custom)
+- **Why**: Curated list is fast and predictable; custom URL/prompt covers edge cases
+- **Trade-off**: URL extraction can fail; prompts can be low signal
+- **Future**: Use DataForSEO trending topics for dynamic suggestions
 
 ### 3. Client-Side Audio Playback
 - **Why**: Simpler than server-side storage
@@ -467,11 +460,13 @@ TTS_PROVIDER=elevenlabs    # ElevenLabs (highest quality, most expensive)
 - **Trade-off**: Large response sizes, no streaming
 - **Future**: Return audio URL from blob storage instead
 
-### 5. Two Host Personas
+### 5. Host Personas (1-4)
 - **Why**: Classic podcast format, natural back-and-forth
 - **Personas**:
   - Alex: Enthusiastic, uses analogies, asks questions
   - Jordan: Skeptical, fact-based, provides counterpoints
+  - Casey: Calm, reflective, connective tissue between stories
+  - Riley: Fast, spicy, one-liners and contrarian takes
 
 ---
 
@@ -529,6 +524,11 @@ ElevenLabs pre-made voices suitable for podcasts:
 - Verify voice IDs are valid
 - Check account has sufficient credits
 
+### "Audio is too short or missing lines"
+- Dia-fal can truncate or skip text, especially with chunking + voice cloning
+- Try `TTS_PROVIDER=vibevoice` or `TTS_PROVIDER=vibevoice-fal` for long scripts
+- Ensure speaker count matches provider capabilities
+
 ### Build Errors
 - Run `npm run build` to check TypeScript errors
 - Ensure all env variables are set (even in development)
@@ -543,11 +543,30 @@ ElevenLabs pre-made voices suitable for podcasts:
 DATAFORSEO_LOGIN=your_login
 DATAFORSEO_PASSWORD=your_api_password
 OPENAI_API_KEY=sk-...
+
+# TTS provider keys (set based on TTS_PROVIDER)
 ELEVENLABS_API_KEY=xi-...
+FAL_API_KEY=your-fal-key
+REPLICATE_API_TOKEN=r8_...
+
+# TTS Provider
+TTS_PROVIDER=vibevoice-fal
 
 # Optional (defaults provided)
 ELEVENLABS_VOICE_1=JBFqnCBsd6RMkjVDRZzb
 ELEVENLABS_VOICE_2=Aw4FAjKCGjjNkVhN1Xmq
+
+# Optional speaker presets (fal.ai)
+VIBEVOICE_SPEAKER_0_PRESET=Frank [EN]
+VIBEVOICE_SPEAKER_1_PRESET=Alice [EN]
+VIBEVOICE_SPEAKER_2_PRESET=
+VIBEVOICE_SPEAKER_3_PRESET=
+
+# Optional speaker presets (Replicate)
+VIBEVOICE_SPEAKER_0_PRESET_REPLICATE=en-Frank_man
+VIBEVOICE_SPEAKER_1_PRESET_REPLICATE=en-Alice_woman
+VIBEVOICE_SPEAKER_2_PRESET_REPLICATE=
+VIBEVOICE_SPEAKER_3_PRESET_REPLICATE=
 ```
 
 ---
