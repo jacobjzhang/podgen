@@ -17,12 +17,13 @@ export interface TrendData {
 }
 
 export interface DialogueTurn {
-  speaker: 'alex' | 'jordan';
+  speaker: 'alex' | 'jordan' | 'casey' | 'riley';
   text: string;
 }
 
 export interface GenerateRequest {
   interests: string[];
+  speakerCount?: number;
 }
 
 export interface GenerateResponse {

@@ -119,6 +119,12 @@ export default function InterestPicker({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && query.trim().length > 0 && filteredInterests.length > 0) {
+              e.preventDefault();
+              handleSelect(filteredInterests[0]);
+            }
+          }}
           onFocus={() => setIsOpen(true)}
           placeholder={
             selectedInterests.length >= maxSelections

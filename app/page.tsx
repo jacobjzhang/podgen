@@ -34,6 +34,7 @@ export default function Home() {
   const [episode, setEpisode] = useState<GeneratedEpisode | null>(null);
   const [historyKey, setHistoryKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [speakerCount, setSpeakerCount] = useState(2);
 
   const handleGenerate = async () => {
     if (selectedInterests.length === 0) return;
@@ -49,6 +50,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           interests: selectedInterests.map(i => i.label),
+          speakerCount,
         }),
       });
 
@@ -161,6 +163,23 @@ export default function Home() {
               maxSelections={5}
               disabled={isGenerating}
             />
+            <div className="mt-6 flex items-center justify-between flex-wrap gap-3">
+              <label className="text-sm font-medium text-gray-700" htmlFor="speakerCount">
+                Number of speakers
+              </label>
+              <select
+                id="speakerCount"
+                value={speakerCount}
+                onChange={(e) => setSpeakerCount(parseInt(e.target.value, 10))}
+                disabled={isGenerating}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+              >
+                <option value={1}>1 speaker</option>
+                <option value={2}>2 speakers</option>
+                <option value={3}>3 speakers</option>
+                <option value={4}>4 speakers</option>
+              </select>
+            </div>
           </div>
 
           {/* Generate button */}

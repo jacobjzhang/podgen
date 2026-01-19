@@ -26,6 +26,18 @@ export const HOST_PERSONAS = {
     Dry humor, occasional sighs at overblown claims. Respects good arguments but pushes back.
     More measured emotionally but genuinely engaged when something is interesting.`,
   },
+  casey: {
+    name: "Casey",
+    role: "The Connector",
+    personality: `Links stories together and zooms out to the bigger picture. Curious and fast on connections.
+    Balances optimism with practical questions. Keeps the conversation moving and clarifies context.`,
+  },
+  riley: {
+    name: "Riley",
+    role: "The Culture Lens",
+    personality: `Brings human impact and cultural context. Picks up on sentiment, ethics, and lived experience.
+    Warm and insightful, but not afraid to challenge assumptions.`,
+  },
 };
 
 // ============================================================================
@@ -114,26 +126,75 @@ THE HOSTS:
    "Mmhmm" / "Yeah" / "Right" / "Mm" / "Uh-huh" / "Oh wow" / "Huh" / "Wait what"
    These should be their own separate turns, not combined with other speech.
 
+=== LEARN FROM THE BEST PODCASTS ===
+
+Study these REAL exchanges from top podcasts:
+
+ALL-IN PODCAST (Chamath, Jason, Sacks, Friedberg):
+SACKS: "Good. Yeah. Good week. Lots going on."
+CHAMATH: "Yeah. Yeah. Definitely a good week."
+JASON: "Did you order them some chicken fingers?"
+CHAMATH: "I cannot comment on who this person is."
+SACKS: "Yes, Trump is responsible. 100 percent."
+CHAMATH: "No, no, no, no, no."
+FREEBERG: "Exactly right."
+CHAMATH: "Right, right."
+JASON: "Can we title yesterday's event National Lampoon Siege of the Capitol?"
+FRIEDBERG: "It was like animal house."
+
+JOE ROGAN EXPERIENCE (from the Kevin Hart episode):
+JOE: "You're always moving."
+KEVIN: "Is there anything else to do? Is there anything else to do besides move?"
+JOE: "Not if you want to get ahead."
+KEVIN: "No, no, especially not now, man. Hunters hunt."
+JOE: "That's crazy."
+KEVIN: "Michael Jordan is that."
+JOE: "He's terrifying."
+KEVIN: "It's not like he's coming in with this thing, like 'I'm killing everybody.' No."
+JOE: "No, he's gentle."
+KEVIN: "He's the most loving man in the world."
+JOE: "One-of-one."
+KEVIN: "One-of-one."
+JOE: "He knows who he is."
+KEVIN: "Mm-hmm. And he's not compromising that."
+(Famous Rogan-isms: "That's crazy, man." / "It's entirely possible." / "Have you ever tried DMT?")
+
+TIM FERRISS SHOW (his go-to follow-ups):
+- "What did you learn from that?"
+- "How did that feel when that happened?"
+- "Can you give me an example?" (he uses this constantly and doesn't let guests wriggle out of it)
+- "Can you please describe the first 90 minutes of your day, being as specific as possible?"
+- "Tell me a story about..." (instead of abstract questions)
+- Ferriss also uses silence strategically: "Let the silence do the work."
+
+Notice how they:
+- Use short acknowledgments as full turns ("Yeah." "Right, right." "Mm-hmm.")
+- Echo each other ("One-of-one." / "One-of-one.")
+- Repeat words for emphasis ("No, no, no, no, no.")
+- React before elaborating ("That's crazy." then explanation)
+- Keep some exchanges extremely brief
+
 === CONTENT REQUIREMENTS ===
 
-- Jump right into discussion. NO "Welcome to the show" or "Our next story is..."
+- START with a brief, natural intro: one host says hi, names themselves and the other host, teases what's coming. Vary this each time - don't be formulaic.
 - For each story: FIRST explain what happened (audience hasn't read the news), THEN react and analyze
 - Analyze: What does this MEAN? Who wins, who loses? What's the real story?
 - Include genuine disagreement—Alex and Jordan should push back on each other
 - Connect dots between different stories when possible
+- End naturally, maybe a quick sign-off or teaser for next time
 
 OUTPUT FORMAT:
 {
   "dialogue": [
-    {"speaker": "alex", "text": "[excited] Okay okay okay, so we HAVE to start with—"},
-    {"speaker": "jordan", "text": "[overlapping] The Andreessen thing."},
-    {"speaker": "alex", "text": "Yes! Fifteen billion— [stammers] I mean, like, that's just— who even HAS that kind of—"},
-    {"speaker": "jordan", "text": "[sighs] A lot of people, apparently."},
+    {"speaker": "alex", "text": "[cheerfully] Hey! It's Alex and Jordan, and we've got some WILD stuff today."},
+    {"speaker": "jordan", "text": "Yeah, uh, buckle up. There's a lot."},
+    {"speaker": "alex", "text": "[excited] Okay so first up— fifteen billion dollars. Fifteen. Billion."},
+    {"speaker": "jordan", "text": "[sighs] The Andreessen thing."},
+    {"speaker": "alex", "text": "Yes! I mean, like, that's just— who even HAS that kind of—"},
+    {"speaker": "jordan", "text": "[interrupting] A lot of people, apparently."},
     {"speaker": "alex", "text": "[pause] Huh."},
-    {"speaker": "jordan", "text": "Yeah."},
-    {"speaker": "alex", "text": "Right, but like... um... [pause] okay so basically what they're saying is—"},
-    {"speaker": "jordan", "text": "[interrupting] [skeptical] What they're SAYING and what's actually happening? Two very different things."},
-    {"speaker": "alex", "text": "[fast-paced] No no I know I know, but hear me out—"}
+    {"speaker": "jordan", "text": "Yeah. So basically what happened is—"},
+    {"speaker": "alex", "text": "[interrupting] Hold on, let me set it up. So Andreessen Horowitz just announced..."}
   ]
 }
 
@@ -189,26 +250,74 @@ The TTS will read them literally. Use ONLY natural text.
 - NO (parenthetical actions) like (laughs) or (sighs)
 - NO stage directions or annotations
 
+=== LEARN FROM THE BEST PODCASTS ===
+
+Study these REAL exchanges from top podcasts:
+
+ALL-IN PODCAST (Chamath, Jason, Sacks, Friedberg):
+SACKS: "Good. Yeah. Good week. Lots going on."
+CHAMATH: "Yeah. Yeah. Definitely a good week."
+JASON: "Did you order them some chicken fingers?"
+CHAMATH: "I cannot comment on who this person is."
+SACKS: "Yes, Trump is responsible. 100 percent."
+CHAMATH: "No, no, no, no, no."
+FREEBERG: "Exactly right."
+CHAMATH: "Right, right."
+JASON: "Can we title yesterday's event National Lampoon Siege of the Capitol?"
+FRIEDBERG: "It was like animal house."
+
+JOE ROGAN EXPERIENCE (from the Kevin Hart episode):
+JOE: "You're always moving."
+KEVIN: "Is there anything else to do? Is there anything else to do besides move?"
+JOE: "Not if you want to get ahead."
+KEVIN: "No, no, especially not now, man. Hunters hunt."
+JOE: "That's crazy."
+KEVIN: "Michael Jordan is that."
+JOE: "He's terrifying."
+KEVIN: "It's not like he's coming in with this thing, like 'I'm killing everybody.' No."
+JOE: "No, he's gentle."
+KEVIN: "He's the most loving man in the world."
+JOE: "One-of-one."
+KEVIN: "One-of-one."
+JOE: "He knows who he is."
+KEVIN: "Mm-hmm. And he's not compromising that."
+(Famous Rogan-isms: "That's crazy, man." / "It's entirely possible.")
+
+TIM FERRISS SHOW (his go-to follow-ups):
+- "What did you learn from that?"
+- "How did that feel when that happened?"
+- "Can you give me an example?" (he uses this constantly)
+- "Can you please describe the first 90 minutes of your day, being as specific as possible?"
+- "Tell me a story about..." (instead of abstract questions)
+
+Notice how they:
+- Use short acknowledgments as full turns ("Yeah." "Right, right." "Mm-hmm.")
+- Echo each other ("One-of-one." / "One-of-one.")
+- Repeat words for emphasis ("No, no, no, no, no.")
+- React before elaborating ("That's crazy." then explanation)
+- Keep some exchanges extremely brief
+
 === CONTENT REQUIREMENTS ===
 
-- Jump right into discussion. NO "Welcome to the show" or "Our next story is..."
+- START with a brief, natural intro: one host says hi, names themselves and the other host, teases what's coming. Vary this each time - don't be formulaic.
 - For each story: FIRST explain what happened (audience hasn't read the news), THEN react and analyze
 - Analyze: What does this MEAN? Who wins, who loses? What's the real story?
 - Include genuine disagreement—Alex and Jordan should push back on each other
 - Connect dots between different stories when possible
+- End naturally, maybe a quick sign-off or teaser for next time
 
 OUTPUT FORMAT:
 {
   "dialogue": [
-    {"speaker": "alex", "text": "Okay okay okay, so we HAVE to start with—"},
+    {"speaker": "alex", "text": "Hey! It's Alex and Jordan, and we've got some WILD stuff today."},
+    {"speaker": "jordan", "text": "Yeah, uh, buckle up. There's a lot."},
+    {"speaker": "alex", "text": "Okay so first up— fifteen billion dollars. Fifteen. Billion."},
     {"speaker": "jordan", "text": "The Andreessen thing."},
-    {"speaker": "alex", "text": "Yes! Fifteen BILLION— I mean, like, that's just— who even HAS that kind of—"},
-    {"speaker": "jordan", "text": "A lot of people, apparently."},
+    {"speaker": "alex", "text": "Yes! I mean, like, that's just— who even HAS that kind of—"},
+    {"speaker": "jordan", "text": "Hold on, a lot of people, apparently."},
     {"speaker": "alex", "text": "Huh."},
-    {"speaker": "jordan", "text": "Yeah."},
-    {"speaker": "alex", "text": "Right, but like... um... okay so basically what they're saying is—"},
-    {"speaker": "jordan", "text": "What they're SAYING and what's actually happening? Two very different things."},
-    {"speaker": "alex", "text": "No no I know I know, but hear me out—"}
+    {"speaker": "jordan", "text": "Yeah. So basically what happened is—"},
+    {"speaker": "alex", "text": "Wait wait wait, let me set it up. So Andreessen Horowitz just announced..."}
   ]
 }
 
@@ -218,21 +327,43 @@ Real conversations are MESSY. People stumble, restart, react with single words. 
 // EXPORTS
 // ============================================================================
 
-export type TTSProvider = "elevenlabs" | "dia-replicate" | "dia-fal" | "vibevoice";
+export type TTSProvider = "elevenlabs" | "dia-replicate" | "dia-fal" | "vibevoice" | "vibevoice-fal";
+
+function getSingleHostOverride(): string {
+  return `\n\n=== SINGLE HOST OVERRIDE ===\nThis episode must be SOLO.\n- Use ONLY Alex as the speaker.\n- Every dialogue turn must have "speaker": "alex".\n- Do NOT mention or reference Jordan.\n- No back-and-forth or debate; keep it as a single-host monologue with occasional self-checks.\n\nSINGLE-HOST OUTPUT EXAMPLE:\n{\n  "dialogue": [\n    {"speaker": "alex", "text": "Hey! It's Alex. Quick solo episode today..."}\n  ]\n}\n`;
+}
+
+function getExtraHostsOverride(speakerCount: number): string {
+  if (speakerCount <= 2) return "";
+
+  const extraHosts = [
+    `- CASEY (${HOST_PERSONAS.casey.role}): ${HOST_PERSONAS.casey.personality}`,
+    `- RILEY (${HOST_PERSONAS.riley.role}): ${HOST_PERSONAS.riley.personality}`,
+  ].slice(0, speakerCount - 2).join("\n");
+
+  return `\n\n=== ADDITIONAL HOSTS ===\n${extraHosts}\n\nCRITICAL:\n- Use ALL hosts throughout the dialogue.\n- Rotate speakers naturally; avoid long monologues by a single host.\n`;
+}
 
 /**
  * Get the appropriate system prompt based on TTS provider
  */
-export function getSystemPrompt(provider?: TTSProvider): string {
-  const actualProvider = provider || (process.env.TTS_PROVIDER as TTSProvider) || "elevenlabs";
+export function getSystemPrompt(provider?: TTSProvider, speakerCount: number = 2): string {
+  const actualProvider = provider || (process.env.TTS_PROVIDER as TTSProvider) || "dia-fal";
+  const extraHostsOverride = getExtraHostsOverride(speakerCount);
 
   // VibeVoice and Dia work better with plain text (no tags)
-  if (actualProvider === "vibevoice" || actualProvider === "dia-fal" || actualProvider === "dia-replicate") {
-    return VIBEVOICE_SYSTEM_PROMPT;
+  if (actualProvider === "vibevoice" || actualProvider === "vibevoice-fal" || actualProvider === "dia-fal" || actualProvider === "dia-replicate") {
+    if (speakerCount === 1) {
+      return VIBEVOICE_SYSTEM_PROMPT + getSingleHostOverride();
+    }
+    return VIBEVOICE_SYSTEM_PROMPT + extraHostsOverride;
   }
 
   // ElevenLabs uses [tag] format
-  return ELEVENLABS_SYSTEM_PROMPT;
+  if (speakerCount === 1) {
+    return ELEVENLABS_SYSTEM_PROMPT + getSingleHostOverride();
+  }
+  return ELEVENLABS_SYSTEM_PROMPT + extraHostsOverride;
 }
 
 // Default export for backwards compatibility
@@ -245,10 +376,19 @@ interface NewsItemWithSummary {
   detailedSummary?: string;
 }
 
-export function buildUserPrompt(newsItems: NewsItemWithSummary[], provider?: TTSProvider): string {
-  const actualProvider = provider || (process.env.TTS_PROVIDER as TTSProvider) || "elevenlabs";
+export function buildUserPrompt(
+  newsItems: NewsItemWithSummary[],
+  provider?: TTSProvider,
+  speakerCount: number = 2
+): string {
+  const actualProvider = provider || (process.env.TTS_PROVIDER as TTSProvider) || "dia-fal";
   // VibeVoice and Dia use plain text (no tags)
-  const usePlainText = actualProvider === "vibevoice" || actualProvider === "dia-fal" || actualProvider === "dia-replicate";
+  const usePlainText = actualProvider === "vibevoice" || actualProvider === "vibevoice-fal" || actualProvider === "dia-fal" || actualProvider === "dia-replicate";
+
+  const speakerNames = ["Alex", "Jordan", "Casey", "Riley"].slice(0, speakerCount);
+  const speakerInstruction = speakerCount === 1
+    ? `SPEAKER MODE: Solo host only.\n- Use ONLY Alex as the speaker.\n- Every dialogue turn must have "speaker": "alex".\n- Do NOT include any other hosts.\n`
+    : `SPEAKER MODE: ${speakerCount} hosts (${speakerNames.join(', ')}).\n- Use ALL speakers and rotate naturally.\n- Avoid long monologues by any single host.\n`;
 
   const newsContext = newsItems
     .map((item, i) => {
@@ -295,14 +435,20 @@ export function buildUserPrompt(newsItems: NewsItemWithSummary[], provider?: TTS
 - "I mean... yeah." (trailing agreement)
 - "[fast-paced] Okay but but but here's what I don't understand, like, if they're saying X then why would they also be doing Y, because those two things are literally— [stammers] they're they're contradictory, right?"`;
 
-  return `Here are today's stories to discuss:
+  const introInstruction = speakerCount === 1
+    ? "Start with a quick, natural intro: Alex greets the audience and tees up what's coming."
+    : speakerCount === 2
+      ? "Start with a quick, natural intro: one host greets, names both hosts, teases what's coming. Keep it brief and vary it each time."
+      : "Start with a quick, natural intro: one host greets, names all hosts, teases what's coming. Keep it brief and vary it each time.";
+
+  return `${speakerInstruction}\nHere are today's stories to discuss:
 
 ${newsContext}
 
 REQUIREMENTS:
 - Generate ${turnRange} dialogue turns ${durationHint}
-- Start mid-conversation with genuine energy, NOT "Welcome to the show"
-- End naturally, not with a formal sign-off
+- ${introInstruction}
+- End naturally with a quick sign-off or teaser for next time
 
 STORY STRUCTURE (for each story):
 1. FIRST: Briefly explain what happened - the audience hasn't read the news yet! Give them the key facts (who, what, where, when) in a conversational way.

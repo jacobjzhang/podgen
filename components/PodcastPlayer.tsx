@@ -79,6 +79,13 @@ export default function PodcastPlayer({ audioUrl, dialogue, duration }: PodcastP
     document.body.removeChild(link);
   };
 
+  const speakerStyles: Record<string, { label: string; className: string }> = {
+    alex: { label: 'Alex', className: 'text-indigo-300' },
+    jordan: { label: 'Jordan', className: 'text-purple-300' },
+    casey: { label: 'Casey', className: 'text-emerald-300' },
+    riley: { label: 'Riley', className: 'text-amber-300' },
+  };
+
   return (
     <div className="w-full bg-gradient-to-br from-indigo-900 to-purple-900 rounded-2xl p-6 text-white">
       <audio ref={audioRef} src={audioUrl} preload="auto" />
@@ -211,14 +218,20 @@ export default function PodcastPlayer({ audioUrl, dialogue, duration }: PodcastP
 
         {showTranscript && (
           <div className="mt-4 max-h-64 overflow-y-auto bg-black/20 rounded-lg p-4 space-y-3">
-            {dialogue.map((turn, i) => (
-              <div key={i} className="text-sm">
-                <span className={`font-semibold ${turn.speaker === 'alex' ? 'text-indigo-300' : 'text-purple-300'}`}>
-                  {turn.speaker === 'alex' ? 'Alex' : 'Jordan'}:
-                </span>{' '}
-                <span className="text-gray-200">{turn.text}</span>
-              </div>
-            ))}
+            {dialogue.map((turn, i) => {
+              const speakerInfo = speakerStyles[turn.speaker] || {
+                label: turn.speaker,
+                className: 'text-indigo-300',
+              };
+              return (
+                <div key={i} className="text-sm">
+                  <span className={`font-semibold ${speakerInfo.className}`}>
+                    {speakerInfo.label}:
+                  </span>{' '}
+                  <span className="text-gray-200">{turn.text}</span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -2,7 +2,7 @@
 // Docs: https://platform.openai.com/docs/api-reference/chat
 
 import { DialogueTurn, NewsItem } from './types';
-import { SYSTEM_PROMPT, buildUserPrompt } from './prompts';
+import { buildUserPrompt, getSystemPrompt } from './prompts';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -32,7 +32,10 @@ interface ChatCompletionResponse {
 /**
  * Generate podcast dialogue from news items using GPT-5.2
  */
-export async function generateDialogue(newsItems: NewsItem[]): Promise<DialogueTurn[]> {
+export async function generateDialogue(
+  newsItems: NewsItem[],
+  speakerCount: number = 2
+): Promise<DialogueTurn[]> {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -44,12 +47,13 @@ export async function generateDialogue(newsItems: NewsItem[]): Promise<DialogueT
   }
 
   console.log(`[OpenAI] Building prompt with ${newsItems.length} news items...`);
-  const userPrompt = buildUserPrompt(newsItems);
-  console.log(`[OpenAI] System prompt: ${SYSTEM_PROMPT.length} chars`);
+  const systemPrompt = getSystemPrompt(undefined, speakerCount);
+  const userPrompt = buildUserPrompt(newsItems, undefined, speakerCount);
+  console.log(`[OpenAI] System prompt: ${systemPrompt.length} chars`);
   console.log(`[OpenAI] User prompt: ${userPrompt.length} chars`);
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt },
   ];
 
@@ -103,10 +107,18 @@ export async function generateDialogue(newsItems: NewsItem[]): Promise<DialogueT
     }
 
     // Validate and normalize the dialogue
-    const normalized = dialogue.map(turn => ({
-      speaker: (turn.speaker === 'alex' ? 'alex' : 'jordan') as 'alex' | 'jordan',
-      text: String(turn.text).trim(),
-    })).filter(turn => turn.text.length > 0);
+    const allowedSpeakers = (['alex', 'jordan', 'casey', 'riley'] as const).slice(0, speakerCount);
+    const normalized = dialogue.map(turn => {
+      const rawSpeaker = String(turn.speaker || '').toLowerCase().trim();
+      const speaker = (allowedSpeakers.includes(rawSpeaker as typeof allowedSpeakers[number])
+        ? rawSpeaker
+        : allowedSpeakers[0]) as typeof allowedSpeakers[number];
+
+      return {
+        speaker,
+        text: String(turn.text).trim(),
+      };
+    }).filter(turn => turn.text.length > 0);
 
     console.log(`[OpenAI] Parsed ${normalized.length} dialogue turns:`);
     normalized.slice(0, 5).forEach((turn, i) => {

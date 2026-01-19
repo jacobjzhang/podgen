@@ -25,6 +25,7 @@ export async function POST(request: Request) {
   try {
     const body: GenerateRequest = await request.json();
     const { interests } = body;
+    const speakerCount = body.speakerCount ?? 2;
 
     if (!interests || !Array.isArray(interests) || interests.length === 0) {
       return NextResponse.json(
@@ -36,6 +37,25 @@ export async function POST(request: Request) {
     if (interests.length > 5) {
       return NextResponse.json(
         { error: 'Maximum 5 interests allowed' },
+        { status: 400 }
+      );
+    }
+
+    if (speakerCount < 1 || speakerCount > 4) {
+      return NextResponse.json(
+        { error: 'speakerCount must be between 1 and 4' },
+        { status: 400 }
+      );
+    }
+
+    const provider = getCurrentProvider();
+    if (
+      speakerCount > 2 &&
+      provider !== 'vibevoice' &&
+      provider !== 'vibevoice-fal'
+    ) {
+      return NextResponse.json(
+        { error: 'speakerCount > 2 requires a VibeVoice provider' },
         { status: 400 }
       );
     }
@@ -92,12 +112,12 @@ export async function POST(request: Request) {
 
     // Step 3: Generate dialogue (with cache)
     console.log('\n[Generate] Step 3: Generating dialogue...');
-    let dialogue = getCachedDialogue(enrichedNews);
+    let dialogue = getCachedDialogue(enrichedNews, speakerCount);
     stepStart = Date.now();
 
     if (!dialogue) {
-      dialogue = await generateDialogue(enrichedNews);
-      setCachedDialogue(enrichedNews, dialogue);
+      dialogue = await generateDialogue(enrichedNews, speakerCount);
+      setCachedDialogue(enrichedNews, dialogue, speakerCount);
       timings.dialogue = Date.now() - stepStart;
       console.log(`[Generate] Dialogue generated in ${(timings.dialogue / 1000).toFixed(1)}s`);
     } else {

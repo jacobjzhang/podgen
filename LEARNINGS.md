@@ -351,7 +351,7 @@ const result = await fal.subscribe("fal-ai/dia-tts", {
 # In .env.local
 TTS_PROVIDER=dia-fal      # Use fal.ai
 TTS_PROVIDER=dia-replicate # Use Replicate
-TTS_PROVIDER=elevenlabs    # Use ElevenLabs (default)
+TTS_PROVIDER=elevenlabs    # Use ElevenLabs
 ```
 
 ---
@@ -439,7 +439,7 @@ Any `[tags]` will be spoken literally, so our code strips them all.
 ```bash
 # In .env.local
 TTS_PROVIDER=vibevoice     # Recommended - native dialogue
-TTS_PROVIDER=dia-fal       # Dia via fal.ai
+TTS_PROVIDER=dia-fal       # Dia via fal.ai (default)
 TTS_PROVIDER=dia-replicate # Dia via Replicate
 TTS_PROVIDER=elevenlabs    # ElevenLabs (highest quality, most expensive)
 ```

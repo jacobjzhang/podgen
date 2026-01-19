@@ -75,9 +75,9 @@ function newsKey(interests: string[]): string {
   return `news_${hash(interests.sort().join(','))}`;
 }
 
-function dialogueKey(newsItems: NewsItem[]): string {
+function dialogueKey(newsItems: NewsItem[], speakerCount: number): string {
   const newsHash = hash(newsItems.map(n => n.title).join('|'));
-  return `dialogue_${newsHash}`;
+  return `dialogue_${newsHash}_s${speakerCount}`;
 }
 
 // News cache
@@ -124,8 +124,8 @@ export function setCachedEnrichedNews(originalNews: NewsItem[], enrichedNews: Ne
 }
 
 // Dialogue cache
-export function getCachedDialogue(newsItems: NewsItem[]): DialogueTurn[] | null {
-  const key = dialogueKey(newsItems);
+export function getCachedDialogue(newsItems: NewsItem[], speakerCount: number): DialogueTurn[] | null {
+  const key = dialogueKey(newsItems, speakerCount);
   const data = readCache<DialogueTurn[]>(key);
 
   if (data) {
@@ -137,54 +137,72 @@ export function getCachedDialogue(newsItems: NewsItem[]): DialogueTurn[] | null 
   return null;
 }
 
-export function setCachedDialogue(newsItems: NewsItem[], dialogue: DialogueTurn[]): void {
-  const key = dialogueKey(newsItems);
+export function setCachedDialogue(
+  newsItems: NewsItem[],
+  dialogue: DialogueTurn[],
+  speakerCount: number
+): void {
+  const key = dialogueKey(newsItems, speakerCount);
   writeCache(key, dialogue);
 }
 
-// Audio cache (stored as .mp3 files)
+// Audio cache (stored as .mp3 or .wav)
 export function getAudioKey(dialogue: DialogueTurn[]): string {
   return hash(dialogue.map(d => `${d.speaker}:${d.text}`).join('|'));
 }
 
 export function getCachedAudio(dialogue: DialogueTurn[]): string | null {
   const key = `audio_${getAudioKey(dialogue)}`;
-  const filePath = join(CACHE_DIR, `${key}.mp3`);
+  const candidates = [
+    { ext: "wav", mime: "audio/wav" },
+    { ext: "mp3", mime: "audio/mpeg" },
+  ];
 
-  if (!existsSync(filePath)) {
-    console.log(`[Cache] MISS - audio`);
-    return null;
+  for (const candidate of candidates) {
+    const filePath = join(CACHE_DIR, `${key}.${candidate.ext}`);
+
+    if (!existsSync(filePath)) {
+      continue;
+    }
+
+    if (isExpired(filePath)) {
+      console.log(`[Cache] EXPIRED - audio`);
+      return null;
+    }
+
+    try {
+      const buffer = readFileSync(filePath);
+      const base64 = buffer.toString('base64');
+      const sizeKB = Math.round(buffer.length / 1024);
+      console.log(`[Cache] HIT - audio (${sizeKB} KB from ${key}.${candidate.ext})`);
+      return `data:${candidate.mime};base64,${base64}`;
+    } catch (err) {
+      console.error(`[Cache] Error reading audio:`, err);
+      return null;
+    }
   }
 
-  if (isExpired(filePath)) {
-    console.log(`[Cache] EXPIRED - audio`);
-    return null;
-  }
-
-  try {
-    const buffer = readFileSync(filePath);
-    const base64 = buffer.toString('base64');
-    const sizeKB = Math.round(buffer.length / 1024);
-    console.log(`[Cache] HIT - audio (${sizeKB} KB from ${key}.mp3)`);
-    return `data:audio/mpeg;base64,${base64}`;
-  } catch (err) {
-    console.error(`[Cache] Error reading audio:`, err);
-    return null;
-  }
+  console.log(`[Cache] MISS - audio`);
+  return null;
 }
 
 export function setCachedAudio(dialogue: DialogueTurn[], audioDataUrl: string): void {
   ensureCacheDir();
   const key = `audio_${getAudioKey(dialogue)}`;
-  const filePath = join(CACHE_DIR, `${key}.mp3`);
-
   try {
-    // Extract base64 from data URL
-    const base64 = audioDataUrl.replace(/^data:audio\/mpeg;base64,/, '');
+    const match = audioDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) {
+      throw new Error("Invalid audio data URL");
+    }
+    const mime = match[1];
+    const base64 = match[2];
     const buffer = Buffer.from(base64, 'base64');
+
+    const ext = mime === "audio/wav" ? "wav" : "mp3";
+    const filePath = join(CACHE_DIR, `${key}.${ext}`);
     writeFileSync(filePath, buffer);
     const sizeKB = Math.round(buffer.length / 1024);
-    console.log(`[Cache] WRITE - ${key}.mp3 (${sizeKB} KB)`);
+    console.log(`[Cache] WRITE - ${key}.${ext} (${sizeKB} KB)`);
   } catch (err) {
     console.error(`[Cache] Error writing audio:`, err);
   }

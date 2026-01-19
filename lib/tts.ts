@@ -5,14 +5,18 @@ import * as elevenlabs from "./elevenlabs";
 import * as diaReplicate from "./dia";
 import * as diaFal from "./dia-fal";
 import * as vibevoice from "./vibevoice";
+import * as vibevoiceFal from "./vibevoice-fal";
 
 import { DialogueTurn } from "./types";
 
 // TTS Provider selection via environment variable
-export type TTSProvider = "elevenlabs" | "dia-replicate" | "dia-fal" | "vibevoice";
+// vibevoice = Replicate 1.5B (~$0.10/run, faster, good quality)
+// vibevoice-fal = fal.ai 7B (~$0.04/min, slower, best quality)
+export type TTSProvider = "elevenlabs" | "dia-replicate" | "dia-fal" | "vibevoice" | "vibevoice-fal";
 
 function getProviderFromEnv(): TTSProvider {
   const provider = process.env.TTS_PROVIDER;
+  const forceDiaReplicate = process.env.DIA_USE_REPLICATE === "true";
 
   // Support legacy USE_VIBEVOICE flag (confusingly named - was for Dia)
   if (!provider && process.env.USE_VIBEVOICE === "true") {
@@ -21,14 +25,21 @@ function getProviderFromEnv(): TTSProvider {
 
   if (
     provider === "vibevoice" ||
+    provider === "vibevoice-fal" ||
     provider === "dia-fal" ||
     provider === "dia-replicate" ||
     provider === "elevenlabs"
   ) {
+    if (provider === "dia-fal" && forceDiaReplicate) {
+      return "dia-replicate";
+    }
     return provider;
   }
 
-  return "elevenlabs"; // Default
+  if (forceDiaReplicate) {
+    return "dia-replicate";
+  }
+  return "dia-fal"; // Default
 }
 
 /**
@@ -48,6 +59,8 @@ export async function generateAudio(dialogue: DialogueTurn[]): Promise<Blob> {
   switch (provider) {
     case "vibevoice":
       return vibevoice.generateAudio(dialogue);
+    case "vibevoice-fal":
+      return vibevoiceFal.generateAudio(dialogue);
     case "dia-fal":
       return diaFal.generateAudio(dialogue);
     case "dia-replicate":
@@ -70,6 +83,8 @@ export async function generateAudioDataUrl(
   switch (provider) {
     case "vibevoice":
       return vibevoice.generateAudioDataUrl(dialogue);
+    case "vibevoice-fal":
+      return vibevoiceFal.generateAudioDataUrl(dialogue);
     case "dia-fal":
       return diaFal.generateAudioDataUrl(dialogue);
     case "dia-replicate":
@@ -88,7 +103,9 @@ export function getEstimatedCostPer1KChars(): number {
 
   switch (provider) {
     case "vibevoice":
-      return 0.01; // ~$0.10 per run, rough estimate per 1K chars
+      return 0.01; // Replicate 1.5B: ~$0.10 per run
+    case "vibevoice-fal":
+      return 0.04; // fal.ai 7B: $0.04 per generated minute
     case "dia-fal":
       return 0.04; // $0.04 per 1K chars
     case "dia-replicate":
