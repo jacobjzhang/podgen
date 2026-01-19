@@ -98,7 +98,7 @@ export default function AppShell({ children, headerContent }: AppShellProps) {
             {/* Close button for mobile */}
             <button
               onClick={() => setSidebarOpen(false)}
-              className="md:hidden absolute top-4 right-4 p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              className="md:hidden absolute top-4 right-4 p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -114,7 +114,7 @@ export default function AppShell({ children, headerContent }: AppShellProps) {
             <div className="flex items-center gap-3 md:gap-4 px-4 md:px-6 py-3 md:py-4">
               <button
                 onClick={toggleSidebar}
-                className="p-2 -ml-2 rounded-lg hover:bg-[var(--bg-hover)] transition"
+                className="p-2 -ml-2 rounded-lg hover:bg-[var(--bg-hover)] transition cursor-pointer"
               >
                 <svg className="w-5 h-5 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />

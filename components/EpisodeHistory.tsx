@@ -95,24 +95,31 @@ export default function EpisodeHistory({ currentEpisodeId }: EpisodeHistoryProps
           <button
             key={episode.id}
             onClick={() => handleOpenEpisode(episode)}
-            className={`w-full p-3 rounded-lg text-left transition-all group ${
+            className={`w-full p-3 rounded-lg text-left transition-all duration-200 group cursor-pointer ${
               isCurrent
-                ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/30'
-                : 'hover:bg-[var(--bg-hover)] border border-transparent'
+                ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/30 shadow-sm shadow-[var(--accent)]/10'
+                : 'hover:bg-[var(--bg-hover)] hover:translate-x-1 border border-transparent hover:border-[var(--border)]'
             }`}
           >
             <div className="flex items-start gap-3">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition ${
+              <div className={`relative w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
                 isCurrent
-                  ? 'bg-[var(--accent)] text-[var(--bg-primary)]'
-                  : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] group-hover:bg-[var(--bg-elevated)] group-hover:text-[var(--text-secondary)]'
+                  ? 'bg-[var(--accent)] text-[var(--bg-primary)] shadow-md shadow-[var(--accent)]/30'
+                  : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] group-hover:bg-[var(--accent)] group-hover:text-[var(--bg-primary)] group-hover:shadow-md group-hover:shadow-[var(--accent)]/20'
               }`}>
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                {/* Play icon - shows on hover when not current */}
+                <svg className={`w-4 h-4 transition-transform duration-200 ${!isCurrent ? 'group-hover:scale-110' : ''}`} fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z" />
                 </svg>
+                {/* Now playing indicator */}
+                {isCurrent && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-[var(--accent)] rounded-full border-2 border-[var(--bg-secondary)] animate-pulse" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                <p className={`text-sm font-semibold truncate transition-colors duration-200 ${
+                  isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)] group-hover:text-[var(--accent)]'
+                }`}>
                   {episode.title || episode.interests.join(', ') || 'Untitled Episode'}
                 </p>
                 {episode.excerpt && (
@@ -124,10 +131,10 @@ export default function EpisodeHistory({ currentEpisodeId }: EpisodeHistoryProps
                   {episode.interests.slice(0, 2).map((interest, i) => (
                     <span
                       key={i}
-                      className={`text-xs px-2 py-0.5 rounded ${
+                      className={`text-xs px-2 py-0.5 rounded transition-colors duration-200 ${
                         isCurrent
                           ? 'bg-[var(--accent)]/20 text-[var(--accent)]'
-                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
+                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] group-hover:bg-[var(--accent)]/10 group-hover:text-[var(--accent)]/80'
                       }`}
                     >
                       {interest}
@@ -145,6 +152,10 @@ export default function EpisodeHistory({ currentEpisodeId }: EpisodeHistoryProps
                   <span>{formatDate(episode.createdAt)}</span>
                 </div>
               </div>
+              {/* Hover arrow indicator */}
+              <svg className="w-4 h-4 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-all duration-200 group-hover:translate-x-0.5 flex-shrink-0 mt-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
             </div>
           </button>
         );

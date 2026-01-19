@@ -100,7 +100,7 @@ export default function EpisodeContent({ episode }: { episode: EpisodeData }) {
       <div className="mb-10">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--accent)] text-[var(--bg-primary)] font-medium text-sm hover:bg-[var(--accent-hover)] transition"
+          className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--accent)] text-[var(--bg-primary)] font-medium text-sm hover:bg-[var(--accent-hover)] transition cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -156,7 +156,7 @@ export default function EpisodeContent({ episode }: { episode: EpisodeData }) {
                 href={source.url || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block p-3 md:p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] hover:border-[var(--text-muted)] transition group"
+                className="block p-3 md:p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] hover:border-[var(--text-muted)] transition group cursor-pointer"
               >
                 <p className="font-medium text-sm group-hover:text-[var(--accent)] transition line-clamp-1">
                   {source.title || 'Source'}

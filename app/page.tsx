@@ -7,6 +7,16 @@ import { Interest, NewsItem } from '@/lib/types';
 
 type GenerationStep = 'idle' | 'fetching' | 'writing' | 'speaking' | 'done' | 'error';
 
+// Quick-pick suggestions for instant selection
+const QUICK_PICKS = [
+  { id: 'ai', label: 'AI & Tech', category: 'Technology' },
+  { id: 'markets', label: 'Markets', category: 'Finance' },
+  { id: 'politics', label: 'Politics', category: 'News' },
+  { id: 'science', label: 'Science', category: 'Science' },
+  { id: 'sports', label: 'Sports', category: 'Sports' },
+  { id: 'entertainment', label: 'Entertainment', category: 'Entertainment' },
+];
+
 export default function Home() {
   const [selectedInterests, setSelectedInterests] = useState<Interest[]>([]);
   const [generationStep, setGenerationStep] = useState<GenerationStep>('idle');
@@ -15,6 +25,14 @@ export default function Home() {
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
 
   const { currentEpisode, setCurrentEpisode, showTranscript, setShowTranscript, refreshHistory } = useApp();
+
+  const handleQuickPick = (pick: typeof QUICK_PICKS[0]) => {
+    if (selectedInterests.some(i => i.id === pick.id)) {
+      setSelectedInterests(selectedInterests.filter(i => i.id !== pick.id));
+    } else if (selectedInterests.length < 5) {
+      setSelectedInterests([...selectedInterests, pick]);
+    }
+  };
 
   const handleGenerate = async () => {
     if (selectedInterests.length === 0) return;
@@ -92,10 +110,45 @@ export default function Home() {
         </p>
       </div>
 
+      {/* Quick picks */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <svg className="w-4 h-4 text-[var(--accent)]" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+          <span className="text-sm font-medium text-[var(--text-secondary)]">Quick picks</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {QUICK_PICKS.map((pick) => {
+            const isSelected = selectedInterests.some(i => i.id === pick.id);
+            return (
+              <button
+                key={pick.id}
+                onClick={() => handleQuickPick(pick)}
+                disabled={isGenerating || (!isSelected && selectedInterests.length >= 5)}
+                className={`
+                  px-4 py-2 rounded-full text-sm font-medium transition-all select-none
+                  ${isSelected
+                    ? 'bg-[var(--accent)] text-[var(--bg-primary)] shadow-lg shadow-[var(--accent)]/25'
+                    : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+                  }
+                  ${isGenerating || (!isSelected && selectedInterests.length >= 5) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
+                `}
+              >
+                {pick.label}
+                {isSelected && (
+                  <span className="ml-2 opacity-70">✓</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Interest picker */}
       <div className="mb-6 md:mb-8">
         <h3 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3 md:mb-4">
-          Select Topics
+          Or search for more
         </h3>
         <InterestPicker
           selectedInterests={selectedInterests}
@@ -117,18 +170,18 @@ export default function Home() {
               type="button"
               onClick={() => setSpeakerCount(count)}
               disabled={isGenerating}
-              className={`py-2 rounded-lg text-sm font-medium transition ${
+              className={`py-2.5 rounded-lg text-sm font-medium transition-all ${
                 speakerCount === count
-                  ? 'bg-[var(--accent)] text-[var(--bg-primary)]'
+                  ? 'bg-[var(--accent)] text-[var(--bg-primary)] shadow-lg shadow-[var(--accent)]/25'
                   : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-              } ${isGenerating ? 'opacity-60 cursor-not-allowed' : ''}`}
+              } ${isGenerating ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
             >
               {count}
             </button>
           ))}
         </div>
         <p className="mt-2 text-xs text-[var(--text-muted)]">
-          3-4 speakers require VibeVoice.
+          More voices for richer conversation
         </p>
       </div>
 
@@ -138,10 +191,10 @@ export default function Home() {
           onClick={handleGenerate}
           disabled={selectedInterests.length === 0 || isGenerating}
           className={`
-            w-full py-3.5 md:py-4 px-6 rounded-xl font-medium text-base transition-all
+            group w-full py-3.5 md:py-4 px-6 rounded-xl font-medium text-base transition-all
             ${selectedInterests.length === 0 || isGenerating
               ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed'
-              : 'bg-[var(--accent)] text-[var(--bg-primary)] hover:bg-[var(--accent-hover)] active:scale-[0.99]'
+              : 'bg-[var(--accent)] text-[var(--bg-primary)] hover:bg-[var(--accent-hover)] active:scale-[0.99] shadow-lg shadow-[var(--accent)]/25 hover:shadow-xl hover:shadow-[var(--accent)]/30'
             }
           `}
         >
@@ -154,15 +207,35 @@ export default function Home() {
               {getStepMessage()}
             </span>
           ) : (
-            `Generate Episode${selectedInterests.length > 0 ? ` · ${selectedInterests.length} topic${selectedInterests.length > 1 ? 's' : ''}` : ''}`
+            <span className="flex items-center justify-center gap-2">
+              {selectedInterests.length > 0 && (
+                <svg className="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                </svg>
+              )}
+              {`Generate Episode${selectedInterests.length > 0 ? ` · ${selectedInterests.length} topic${selectedInterests.length > 1 ? 's' : ''}` : ''}`}
+            </span>
           )}
         </button>
+        {selectedInterests.length === 0 && !isGenerating && (
+          <p className="text-center text-xs text-[var(--text-muted)] mt-3">
+            Select at least one topic to get started
+          </p>
+        )}
       </div>
 
       {/* Error */}
       {error && (
         <div className="mb-6 md:mb-8 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-          <p className="text-red-400 text-sm">{error}</p>
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+            <div>
+              <p className="text-red-400 text-sm font-medium">Generation failed</p>
+              <p className="text-red-400/80 text-sm mt-1">{error}</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -173,7 +246,7 @@ export default function Home() {
             <h3 className="font-medium">Transcript</h3>
             <button
               onClick={() => setShowTranscript(false)}
-              className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition cursor-pointer"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -206,34 +279,55 @@ export default function Home() {
                 href={item.url || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block p-3 md:p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] hover:border-[var(--text-muted)] transition group"
+                className="group block p-3 md:p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] hover:border-[var(--accent)]/50 hover:bg-[var(--bg-hover)] transition-all cursor-pointer"
               >
-                <p className="font-medium text-sm group-hover:text-[var(--accent)] transition line-clamp-1">
-                  {item.title}
-                </p>
-                <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">
-                  {item.snippet}
-                </p>
-                <p className="text-xs text-[var(--accent-muted)] mt-2">
-                  {item.source}
-                </p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm group-hover:text-[var(--accent)] transition line-clamp-1">
+                      {item.title}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">
+                      {item.snippet}
+                    </p>
+                    <p className="text-xs text-[var(--accent-muted)] mt-2">
+                      {item.source}
+                    </p>
+                  </div>
+                  <svg className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--accent)] transition flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                  </svg>
+                </div>
               </a>
             ))}
           </div>
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Empty state with suggestions */}
       {!currentEpisode && !isGenerating && selectedInterests.length === 0 && (
-        <div className="text-center py-12 md:py-16">
-          <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-[var(--bg-secondary)] flex items-center justify-center mx-auto mb-4">
-            <svg className="w-7 h-7 md:w-8 md:h-8 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+        <div className="text-center py-8 md:py-12">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--accent)]/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
             </svg>
           </div>
-          <p className="text-[var(--text-muted)]">
-            Select topics above to generate your podcast
+          <p className="text-[var(--text-primary)] font-medium mb-2">
+            Ready to generate your podcast
           </p>
+          <p className="text-[var(--text-muted)] text-sm mb-6">
+            Use the quick picks above or search for specific topics
+          </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-secondary)]">
+              <kbd className="font-mono text-[var(--accent)]">↑</kbd>
+              <kbd className="font-mono text-[var(--accent)]">↓</kbd>
+              Browse topics
+            </span>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-secondary)]">
+              <kbd className="font-mono text-[var(--accent)]">Enter</kbd>
+              Select
+            </span>
+          </div>
         </div>
       )}
     </div>

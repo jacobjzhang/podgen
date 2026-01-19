@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { DialogueTurn } from '@/lib/types';
 
 interface PlayerBarProps {
@@ -21,12 +21,16 @@ export default function PlayerBar({
   showTranscript,
 }: PlayerBarProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
+  const [hoverPosition, setHoverPosition] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Reset state and attach event listeners when audioUrl changes
   useEffect(() => {
@@ -81,7 +85,44 @@ export default function PlayerBar({
     }
   }, [audioUrl]);
 
-  const togglePlay = () => {
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      if (!audioUrl) return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          togglePlayRef.current?.();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          skip(-5);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          skip(5);
+          break;
+        case 'KeyM':
+          e.preventDefault();
+          setIsMuted(m => !m);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [audioUrl]);
+
+  // Ref to avoid stale closure in keyboard handler
+  const togglePlayRef = useRef<(() => void) | null>(null);
+
+  const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio || !audioUrl) return;
 
@@ -90,7 +131,12 @@ export default function PlayerBar({
     } else {
       audio.play();
     }
-  };
+  }, [audioUrl, isPlaying]);
+
+  // Keep ref in sync for keyboard handler
+  useEffect(() => {
+    togglePlayRef.current = togglePlay;
+  }, [togglePlay]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const audio = audioRef.current;
@@ -100,10 +146,36 @@ export default function PlayerBar({
     setCurrentTime(newTime);
   };
 
-  const skip = (seconds: number) => {
+  const skip = useCallback((seconds: number) => {
     const audio = audioRef.current;
     if (!audio) return;
     audio.currentTime = Math.max(0, Math.min(duration, audio.currentTime + seconds));
+  }, [duration]);
+
+  // Handle progress bar hover for time preview
+  const handleProgressHover = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!progressBarRef.current || !duration) return;
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, x / rect.width));
+    setHoverTime(percentage * duration);
+    setHoverPosition(x);
+  };
+
+  const handleProgressLeave = () => {
+    if (!isDragging) {
+      setHoverTime(null);
+    }
+  };
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!progressBarRef.current || !duration || !audioRef.current) return;
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, x / rect.width));
+    const newTime = percentage * duration;
+    audioRef.current.currentTime = newTime;
+    setCurrentTime(newTime);
   };
 
   const formatTime = (seconds: number) => {
@@ -123,16 +195,51 @@ export default function PlayerBar({
     );
   }
 
+  const keyboardHints = [
+    { key: 'Space', action: 'Play/Pause' },
+    { key: '←/→', action: 'Skip 5s' },
+    { key: 'M', action: 'Mute' },
+  ];
+
   return (
     <div className="fixed bottom-0 left-0 right-0 h-[var(--player-height)] bg-[var(--bg-secondary)] border-t border-[var(--border)] z-50">
       <audio ref={audioRef} src={audioUrl} preload="auto" />
 
       {/* Progress bar at top of player */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-[var(--bg-elevated)] group cursor-pointer">
+      <div
+        ref={progressBarRef}
+        className="absolute top-0 left-0 right-0 h-1 bg-[var(--bg-elevated)] group cursor-pointer hover:h-2 transition-all duration-150"
+        onMouseMove={handleProgressHover}
+        onMouseLeave={handleProgressLeave}
+        onClick={handleProgressClick}
+      >
+        {/* Progress fill */}
         <div
-          className="h-full bg-[var(--accent)] transition-all"
+          className="h-full bg-[var(--accent)] transition-[width] duration-75"
           style={{ width: `${progress}%` }}
         />
+        {/* Hover preview line */}
+        {hoverTime !== null && (
+          <div
+            className="absolute top-0 h-full w-0.5 bg-white/50 pointer-events-none"
+            style={{ left: `${(hoverTime / duration) * 100}%` }}
+          />
+        )}
+        {/* Scrubber thumb */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-[var(--accent)] rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+          style={{ left: `calc(${progress}% - 6px)` }}
+        />
+        {/* Time preview tooltip */}
+        {hoverTime !== null && (
+          <div
+            className="absolute -top-8 px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded text-xs font-medium pointer-events-none transform -translate-x-1/2 shadow-lg"
+            style={{ left: hoverPosition }}
+          >
+            {formatTime(hoverTime)}
+          </div>
+        )}
+        {/* Hidden range input for accessibility */}
         <input
           type="range"
           min="0"
@@ -140,6 +247,7 @@ export default function PlayerBar({
           value={currentTime}
           onChange={handleSeek}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          aria-label="Seek"
         />
       </div>
 
@@ -163,8 +271,8 @@ export default function PlayerBar({
             {/* Skip back */}
             <button
               onClick={() => skip(-15)}
-              className="p-1.5 md:p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
-              title="Back 15s"
+              className="p-1.5 md:p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg transition-all cursor-pointer"
+              title="Back 15s (← for 5s)"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
@@ -174,7 +282,8 @@ export default function PlayerBar({
             {/* Play/Pause */}
             <button
               onClick={togglePlay}
-              className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center hover:scale-105 transition-transform"
+              className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-lg cursor-pointer"
+              title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
             >
               {isPlaying ? (
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -190,8 +299,8 @@ export default function PlayerBar({
             {/* Skip forward */}
             <button
               onClick={() => skip(15)}
-              className="p-1.5 md:p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
-              title="Forward 15s"
+              className="p-1.5 md:p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg transition-all cursor-pointer"
+              title="Forward 15s (→ for 5s)"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />
@@ -217,7 +326,8 @@ export default function PlayerBar({
               const nextIndex = (currentIndex + 1) % speeds.length;
               setPlaybackSpeed(speeds[nextIndex]);
             }}
-            className="px-2 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] rounded hover:border-[var(--text-muted)] transition"
+            className="px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] rounded-md transition-all cursor-pointer"
+            title="Playback speed"
           >
             {playbackSpeed}x
           </button>
@@ -226,7 +336,7 @@ export default function PlayerBar({
           {dialogue.length > 0 && (
             <button
               onClick={onTranscriptToggle}
-              className={`hidden sm:block p-2 rounded transition ${showTranscript ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+              className={`hidden sm:block p-2 rounded-lg transition-all cursor-pointer ${showTranscript ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}`}
               title="Toggle transcript"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -239,7 +349,8 @@ export default function PlayerBar({
           <div className="hidden md:flex items-center gap-2">
             <button
               onClick={() => setIsMuted(!isMuted)}
-              className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
+              className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg transition-all cursor-pointer"
+              title={isMuted ? 'Unmute (M)' : 'Mute (M)'}
             >
               {isMuted || volume === 0 ? (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
