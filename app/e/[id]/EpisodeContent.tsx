@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 
@@ -21,19 +21,30 @@ interface EpisodeData {
   transcriptText: string;
 }
 
+// Speaker colors for visual distinction
+const speakerColors: Record<string, { bg: string; text: string; border: string }> = {
+  alex: { bg: 'bg-[var(--accent)]/10', text: 'text-[var(--accent)]', border: 'border-[var(--accent)]/30' },
+  jordan: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/30' },
+  casey: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' },
+  riley: { bg: 'bg-sky-500/10', text: 'text-sky-400', border: 'border-sky-500/30' },
+};
+
+const defaultColor = { bg: 'bg-[var(--bg-tertiary)]', text: 'text-[var(--text-secondary)]', border: 'border-[var(--border)]' };
+
 export default function EpisodeContent({ episode }: { episode: EpisodeData }) {
-  const { setCurrentEpisode, showTranscript, setShowTranscript } = useApp();
+  const { setCurrentEpisode } = useApp();
 
   // Parse transcript into dialogue turns
-  const dialogueTurns = episode.transcriptText
-    ? episode.transcriptText.split('\n').filter(Boolean).map(line => {
-        const match = line.match(/^(\w+):\s*(.*)$/);
-        if (match) {
-          return { speaker: match[1].toLowerCase() as 'alex' | 'jordan', text: match[2] };
-        }
-        return { speaker: 'alex' as const, text: line };
-      })
-    : [];
+  const dialogueTurns = useMemo(() => {
+    if (!episode.transcriptText) return [];
+    return episode.transcriptText.split('\n').filter(Boolean).map(line => {
+      const match = line.match(/^(\w+):\s*(.*)$/);
+      if (match) {
+        return { speaker: match[1].toLowerCase(), text: match[2] };
+      }
+      return { speaker: 'narrator', text: line };
+    });
+  }, [episode.transcriptText]);
 
   // Set episode in context when component mounts
   useEffect(() => {
@@ -42,9 +53,14 @@ export default function EpisodeContent({ episode }: { episode: EpisodeData }) {
       audioUrl: episode.audioSrc,
       title: episode.title,
       interests: episode.interests,
-      dialogue: dialogueTurns,
+      dialogue: dialogueTurns.map(t => ({
+        speaker: t.speaker as 'alex' | 'jordan',
+        text: t.text
+      })),
     });
   }, [episode.id, episode.audioSrc, episode.title, episode.interests, dialogueTurns, setCurrentEpisode]);
+
+  const getSpeakerColor = (speaker: string) => speakerColors[speaker] || defaultColor;
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-10">
@@ -93,29 +109,36 @@ export default function EpisodeContent({ episode }: { episode: EpisodeData }) {
         </Link>
       </div>
 
-      {/* Transcript panel */}
-      {showTranscript && dialogueTurns.length > 0 && (
-        <div className="mb-8 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border)] overflow-hidden">
-          <div className="px-4 md:px-5 py-3 md:py-4 border-b border-[var(--border)] flex items-center justify-between">
-            <h3 className="font-medium">Transcript</h3>
-            <button
-              onClick={() => setShowTranscript(false)}
-              className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="p-4 md:p-5 max-h-80 md:max-h-96 overflow-y-auto space-y-3 md:space-y-4">
-            {dialogueTurns.map((turn, i) => (
-              <div key={i} className="text-sm">
-                <span className={`font-semibold ${turn.speaker === 'alex' ? 'text-[var(--accent)]' : 'text-purple-400'}`}>
-                  {turn.speaker.charAt(0).toUpperCase() + turn.speaker.slice(1)}:
-                </span>{' '}
-                <span className="text-[var(--text-secondary)]">{turn.text}</span>
-              </div>
-            ))}
+      {/* Transcript - Always visible on episode page */}
+      {dialogueTurns.length > 0 && (
+        <div className="mb-10">
+          <h3 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4 md:mb-6">
+            Transcript
+          </h3>
+          <div className="space-y-4">
+            {dialogueTurns.map((turn, i) => {
+              const color = getSpeakerColor(turn.speaker);
+              const speakerName = turn.speaker.charAt(0).toUpperCase() + turn.speaker.slice(1);
+
+              return (
+                <div
+                  key={i}
+                  className={`relative pl-4 border-l-2 ${color.border}`}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${color.bg} ${color.text}`}>
+                      {speakerName.charAt(0)}
+                    </span>
+                    <span className={`text-sm font-semibold ${color.text}`}>
+                      {speakerName}
+                    </span>
+                  </div>
+                  <p className="text-[var(--text-secondary)] leading-relaxed pl-9">
+                    {turn.text}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
