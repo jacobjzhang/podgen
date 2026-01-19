@@ -1,8 +1,11 @@
 import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 
 type PageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 function formatDuration(seconds: number | null | undefined) {
@@ -20,22 +23,101 @@ function parseInterests(inputSummary: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
+const CACHE_DIR = path.join(process.cwd(), '.cache');
+
+function hash(data: string) {
+  return crypto.createHash('sha256').update(data).digest('hex').substring(0, 16);
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
+function getCacheEpisode(id: string) {
+  const filePath = path.join(CACHE_DIR, `episode_${id}.json`);
+  if (!fs.existsSync(filePath)) return null;
+  const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  return {
+    id,
+    audio_cache_key: id,
+    title: raw.interests?.join(', ') || 'Untitled Episode',
+    excerpt: null,
+    input_summary: raw.interests?.join(', ') || null,
+    audio_url: null,
+    audio_duration_seconds: raw.duration || null,
+    created_at: raw.createdAt || null,
+  };
+}
+
+function getCacheSources(interests: string[]) {
+  if (!interests || interests.length === 0) return [];
+  const newsKey = `news_${hash([...interests].sort().join(','))}.json`;
+  const newsPath = path.join(CACHE_DIR, newsKey);
+  if (!fs.existsSync(newsPath)) return [];
+  try {
+    const items = JSON.parse(fs.readFileSync(newsPath, 'utf-8'));
+    return items.map((item: { title: string; url: string; snippet: string }) => ({
+      title: item.title,
+      url: item.url,
+      snippet: item.snippet,
+      source_type: 'news',
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function getTranscriptFromCache(audioKey: string) {
+  if (!fs.existsSync(CACHE_DIR)) return '';
+  const files = fs.readdirSync(CACHE_DIR);
+  const dialogueFiles = files.filter(
+    (file) => file.startsWith('dialogue_') && file.endsWith('.json')
+  );
+
+  for (const file of dialogueFiles) {
+    const fp = path.join(CACHE_DIR, file);
+    try {
+      const dialogue = JSON.parse(fs.readFileSync(fp, 'utf-8'));
+      const key = hash(
+        dialogue.map((turn: { speaker: string; text: string }) => `${turn.speaker}:${turn.text}`).join('|')
+      );
+      if (key === audioKey) {
+        return dialogue
+          .map((turn: { speaker: string; text: string }) => `${String(turn.speaker).toUpperCase()}: ${turn.text}`)
+          .join('\n');
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return '';
+}
+
 async function getEpisode(id: string) {
-  const { data, error } = await supabaseAdmin
+  const baseQuery = supabaseAdmin
     .from('episodes')
     .select(
       'id,audio_cache_key,title,excerpt,input_summary,audio_url,audio_duration_seconds,created_at'
     )
-    .or(`id.eq.${id},audio_cache_key.eq.${id}`)
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
 
-  if (error || !data) return null;
+  const query = isUuid(id)
+    ? baseQuery.or(`id.eq.${id},audio_cache_key.eq.${id}`)
+    : baseQuery.eq('audio_cache_key', id);
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error || !data) {
+    return getCacheEpisode(id);
+  }
   return data;
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const episode = await getEpisode(params.id);
+  const { id } = await params;
+  const episode = await getEpisode(id);
   if (!episode) return {};
 
   return {
@@ -50,7 +132,8 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 export default async function EpisodePage({ params }: PageProps) {
-  const episode = await getEpisode(params.id);
+  const { id } = await params;
+  const episode = await getEpisode(id);
 
   if (!episode) {
     notFound();
@@ -68,14 +151,16 @@ export default async function EpisodePage({ params }: PageProps) {
       .maybeSingle(),
   ]);
 
-  const sources = sourcesRes.data || [];
-  const transcriptText = transcriptRes.data?.transcript_text || '';
+  const interests = parseInterests(episode.input_summary);
+  const sources = sourcesRes.data?.length ? sourcesRes.data : getCacheSources(interests);
+  const transcriptText =
+    transcriptRes.data?.transcript_text ||
+    getTranscriptFromCache(episode.audio_cache_key || episode.id);
 
   const audioSrc =
     episode.audio_url ||
     `/api/episodes?id=${episode.audio_cache_key || episode.id}`;
 
-  const interests = parseInterests(episode.input_summary);
   const duration = formatDuration(episode.audio_duration_seconds);
 
   return (

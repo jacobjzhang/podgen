@@ -12,12 +12,17 @@ export async function GET(request: Request) {
   // If ID provided, return audio for that episode
   if (episodeId) {
     try {
-      const { data, error } = await supabaseAdmin
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        episodeId
+      );
+      const baseQuery = supabaseAdmin
         .from('episodes')
         .select('id,audio_cache_key,audio_url')
-        .or(`id.eq.${episodeId},audio_cache_key.eq.${episodeId}`)
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      const query = isUuid
+        ? baseQuery.or(`id.eq.${episodeId},audio_cache_key.eq.${episodeId}`)
+        : baseQuery.eq('audio_cache_key', episodeId);
+      const { data, error } = await query.maybeSingle();
 
       if (!error && data?.audio_url) {
         return NextResponse.json({ audioUrl: data.audio_url });
