@@ -12,7 +12,7 @@ This is a living roadmap. Priorities may shift based on user feedback and unit e
 - **Discoverability metadata**: auto-generate titles + short excerpts for each episode.
 - **Observability**: latency, cost per episode, failure rate, and cache hit rate.
 - **One-off mode (no auth)**: drop links/files/text → generate a single episode → share link.
-- **Share pages**: public episode pages with OG tags, title/excerpt, and easy sharing.
+- **Share pages**: public episode pages with OG tags, title/excerpt, and easy sharing. [X]
 
 ## Mid-Term (3-9 months)
 - **Personalization engine**: listening habits, topic weighting, host style tuning.

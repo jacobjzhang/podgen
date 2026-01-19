@@ -9,6 +9,8 @@ interface Episode {
   duration: number;
   newsCount: number;
   dialogueTurns: number;
+  title?: string;
+  excerpt?: string;
 }
 
 interface EpisodeHistoryProps {
@@ -132,7 +134,15 @@ export default function EpisodeHistory({ onSelectEpisode, currentEpisodeId }: Ep
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                  {episode.title || episode.interests.join(', ') || 'Untitled Episode'}
+                </p>
+                {episode.excerpt && (
+                  <p className="text-xs text-[var(--text-muted)] line-clamp-2 mt-1">
+                    {episode.excerpt}
+                  </p>
+                )}
+                <div className="flex items-center gap-1.5 flex-wrap mt-2">
                   {episode.interests.slice(0, 2).map((interest, i) => (
                     <span
                       key={i}

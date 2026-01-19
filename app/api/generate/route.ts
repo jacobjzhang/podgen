@@ -206,6 +206,10 @@ export async function POST(request: Request) {
     const title = generatedMeta?.title || inputSummary || 'Untitled Episode';
     const excerpt = generatedMeta?.excerpt || null;
 
+    const transcriptText = dialogue
+      .map((turn) => `${String(turn.speaker).toUpperCase()}: ${turn.text}`)
+      .join('\n');
+
     const audioFormat = audioUrl.startsWith('data:')
       ? audioUrl.match(/^data:([^;]+);/)?.[1] || null
       : audioUrl.endsWith('.wav')
@@ -266,6 +270,17 @@ export async function POST(request: Request) {
           if (sourcesError) {
             console.error('[Generate] Supabase sources insert failed:', sourcesError);
           }
+        }
+
+        const { error: transcriptError } = await supabaseAdmin
+          .from('episode_transcripts')
+          .upsert({
+            episode_id: episodeRow.id,
+            dialogue_json: dialogue,
+            transcript_text: transcriptText,
+          });
+        if (transcriptError) {
+          console.error('[Generate] Supabase transcript upsert failed:', transcriptError);
         }
       }
     } catch (err) {

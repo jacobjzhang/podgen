@@ -49,7 +49,7 @@ export async function GET(request: Request) {
   try {
     const { data, error } = await supabaseAdmin
       .from('episodes')
-      .select('id,audio_cache_key,input_summary,created_at,audio_duration_seconds,news_count,dialogue_turns')
+      .select('id,audio_cache_key,input_summary,created_at,audio_duration_seconds,news_count,dialogue_turns,title,excerpt')
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -62,6 +62,8 @@ export async function GET(request: Request) {
               .map((item: string) => item.trim())
               .filter(Boolean)
           : [],
+        title: row.title || null,
+        excerpt: row.excerpt || null,
         createdAt: row.created_at,
         duration: row.audio_duration_seconds || 0,
         newsCount: row.news_count || 0,

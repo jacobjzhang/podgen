@@ -1,7 +1,7 @@
+import { createClient } from "@supabase/supabase-js";
+import crypto from "crypto";
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
-import { createClient } from "@supabase/supabase-js";
 
 const ROOT = process.cwd();
 const CACHE_DIR = path.join(ROOT, ".cache");
@@ -90,7 +90,7 @@ ${dialogueSample || "N/A"}
         { role: "system", content: system },
         { role: "user", content: user },
       ],
-      max_completion_tokens: 200,
+      max_completion_tokens: 16_000,
       response_format: { type: "json_object" },
     }),
   });
@@ -109,7 +109,10 @@ ${dialogueSample || "N/A"}
     const parsed = JSON.parse(content);
     const title = String(parsed.title || "").trim();
     const excerpt = String(parsed.excerpt || "").trim();
-    if (!title || !excerpt) return null;
+    if (!title || !excerpt) {
+      console.warn("[OpenAI] metadata missing title or excerpt");
+      return null;
+    }
     return {
       title: truncateText(title, 60),
       excerpt: truncateText(excerpt, 160),
@@ -167,6 +170,7 @@ async function main() {
   const dryRun = args.has("--dry-run");
   const skipUpload = args.has("--skip-upload");
   const skipMetadata = args.has("--skip-metadata");
+  const skipTranscripts = args.has("--skip-transcripts");
   const limitArg = process.argv.find((a) => a.startsWith("--limit="));
   const limit = limitArg ? Number(limitArg.split("=")[1]) : null;
   const bucket = "episodes";
@@ -339,6 +343,9 @@ async function main() {
     }
 
     if (!skipMetadata) {
+      if (!openaiApiKey) {
+        console.warn(`[WARN] metadata skipped for ${audioId}: missing OPENAI_API_KEY`);
+      }
       const dialogueSample = dialogueInfo?.dialogue
         ? dialogueInfo.dialogue
             .slice(0, 6)
@@ -355,7 +362,9 @@ async function main() {
         apiKey: openaiApiKey,
       });
 
-      if (metaResult && !dryRun) {
+      if (!metaResult) {
+        console.warn(`[WARN] metadata not generated for ${audioId}`);
+      } else if (!dryRun) {
         const { error: updateError } = await supabase
           .from("episodes")
           .update({
@@ -365,7 +374,27 @@ async function main() {
           .eq("audio_cache_key", audioId);
         if (updateError) {
           console.error(`[ERROR] metadata update ${audioId}:`, updateError);
+        } else {
+          console.log(
+            `[OK] metadata generated for ${audioId}: ${metaResult.title} / ${metaResult.excerpt}`
+          );
         }
+      }
+    }
+
+    if (!skipTranscripts && dialogueInfo?.dialogue) {
+      const transcriptText = dialogueInfo.dialogue
+        .map((turn) => `${String(turn.speaker).toUpperCase()}: ${turn.text}`)
+        .join("\n");
+      const { error: transcriptError } = await supabase
+        .from("episode_transcripts")
+        .upsert({
+          episode_id: episodeId,
+          dialogue_json: dialogueInfo.dialogue,
+          transcript_text: transcriptText,
+        });
+      if (transcriptError) {
+        console.error(`[ERROR] transcript upsert ${audioId}:`, transcriptError);
       }
     }
 

@@ -3,8 +3,8 @@
 // Docs: https://replicate.com/microsoft/vibevoice
 // Cost: ~$0.10 per run
 
-import Replicate from "replicate";
 import { DialogueTurn } from "./types";
+import Replicate from "replicate";
 
 // Voice presets for our podcast hosts
 const VOICE_ALEX = process.env.VIBEVOICE_SPEAKER_0_PRESET_REPLICATE || "en-Frank_man"; // Speaker 1 - enthusiastic host
