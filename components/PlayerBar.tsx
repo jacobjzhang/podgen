@@ -117,8 +117,8 @@ export default function PlayerBar({
 
   if (!audioUrl) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 h-[var(--player-height)] bg-[var(--bg-secondary)] border-t border-[var(--border)] flex items-center justify-center z-50">
-        <p className="text-[var(--text-muted)] text-sm">Select topics and generate an episode to start listening</p>
+      <div className="fixed bottom-0 left-0 right-0 h-[var(--player-height)] bg-[var(--bg-secondary)] border-t border-[var(--border)] flex items-center justify-center z-50 px-4">
+        <p className="text-[var(--text-muted)] text-sm text-center">Select topics and generate an episode to start listening</p>
       </div>
     );
   }
@@ -143,11 +143,11 @@ export default function PlayerBar({
         />
       </div>
 
-      <div className="h-full px-4 flex items-center gap-6">
-        {/* Episode info - left */}
-        <div className="flex items-center gap-3 w-64 min-w-0">
-          <div className="w-14 h-14 rounded bg-gradient-to-br from-[var(--accent)] to-[var(--accent-muted)] flex items-center justify-center flex-shrink-0">
-            <svg className="w-6 h-6 text-[var(--bg-primary)]" fill="currentColor" viewBox="0 0 24 24">
+      <div className="h-full px-3 md:px-4 flex items-center gap-3 md:gap-6">
+        {/* Episode info - left (hidden on mobile) */}
+        <div className="hidden sm:flex items-center gap-3 w-48 lg:w-64 min-w-0">
+          <div className="w-12 h-12 lg:w-14 lg:h-14 rounded bg-gradient-to-br from-[var(--accent)] to-[var(--accent-muted)] flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 lg:w-6 lg:h-6 text-[var(--bg-primary)]" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
             </svg>
           </div>
@@ -157,13 +157,13 @@ export default function PlayerBar({
           </div>
         </div>
 
-        {/* Controls - center */}
-        <div className="flex-1 flex flex-col items-center justify-center max-w-xl">
-          <div className="flex items-center gap-4">
+        {/* Controls - center (takes more space on mobile) */}
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <div className="flex items-center gap-2 md:gap-4">
             {/* Skip back */}
             <button
               onClick={() => skip(-15)}
-              className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
+              className="p-1.5 md:p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
               title="Back 15s"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -174,7 +174,7 @@ export default function PlayerBar({
             {/* Play/Pause */}
             <button
               onClick={togglePlay}
-              className="w-10 h-10 rounded-full bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center hover:scale-105 transition-transform"
+              className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center hover:scale-105 transition-transform"
             >
               {isPlaying ? (
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -190,7 +190,7 @@ export default function PlayerBar({
             {/* Skip forward */}
             <button
               onClick={() => skip(15)}
-              className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
+              className="p-1.5 md:p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
               title="Forward 15s"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -208,7 +208,7 @@ export default function PlayerBar({
         </div>
 
         {/* Right controls */}
-        <div className="flex items-center gap-3 w-64 justify-end">
+        <div className="flex items-center gap-2 md:gap-3 sm:w-48 lg:w-64 justify-end">
           {/* Speed */}
           <button
             onClick={() => {
@@ -226,7 +226,7 @@ export default function PlayerBar({
           {dialogue.length > 0 && (
             <button
               onClick={onTranscriptToggle}
-              className={`p-2 rounded transition ${showTranscript ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+              className={`hidden sm:block p-2 rounded transition ${showTranscript ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
               title="Toggle transcript"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -235,8 +235,8 @@ export default function PlayerBar({
             </button>
           )}
 
-          {/* Volume */}
-          <div className="flex items-center gap-2">
+          {/* Volume (hidden on mobile - use system volume) */}
+          <div className="hidden md:flex items-center gap-2">
             <button
               onClick={() => setIsMuted(!isMuted)}
               className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
