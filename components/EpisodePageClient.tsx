@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import PlayerBar from '@/components/PlayerBar';
 import EpisodeHistory from '@/components/EpisodeHistory';
 
@@ -82,7 +83,7 @@ export default function EpisodePageClient({ episode }: { episode: EpisodeData })
           <div className="w-[280px] h-full flex flex-col">
             {/* Logo */}
             <div className="p-5 border-b border-[var(--border)]">
-              <a href="/" className="flex items-center gap-3">
+              <Link href="/" className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-[var(--accent)] flex items-center justify-center">
                   <svg className="w-5 h-5 text-[var(--bg-primary)]" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
@@ -92,7 +93,7 @@ export default function EpisodePageClient({ episode }: { episode: EpisodeData })
                   <h1 className="text-lg font-semibold tracking-tight">Podgen</h1>
                   <p className="text-xs text-[var(--text-muted)]">AI Podcasts</p>
                 </div>
-              </a>
+              </Link>
             </div>
 
             {/* History section */}
@@ -179,7 +180,7 @@ export default function EpisodePageClient({ episode }: { episode: EpisodeData })
 
             {/* CTA */}
             <div className="mb-10">
-              <a
+              <Link
                 href="/"
                 className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--accent)] text-[var(--bg-primary)] font-medium text-sm hover:bg-[var(--accent-hover)] transition"
               >
@@ -187,7 +188,7 @@ export default function EpisodePageClient({ episode }: { episode: EpisodeData })
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
                 Generate a new episode
-              </a>
+              </Link>
             </div>
 
             {/* Transcript panel */}
