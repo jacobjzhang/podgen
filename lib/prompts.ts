@@ -180,8 +180,11 @@ Notice how they:
 - For each story: FIRST explain what happened (audience hasn't read the news), THEN react and analyze
 - Analyze: What does this MEAN? Who wins, who loses? What's the real story?
 - Include genuine disagreement—Alex and Jordan should push back on each other
+- Add host-to-host banter: callbacks, zingers, short stories, and light teasing (keep it friendly)
+- Add more natural reactions like "oh my God", "haha", "ha..", "heh", "mhmm"
 - Connect dots between different stories when possible
 - End naturally, maybe a quick sign-off or teaser for next time
+- You may discuss stories in any order; it does NOT need to match the order provided
 
 OUTPUT FORMAT:
 {
@@ -303,8 +306,11 @@ Notice how they:
 - For each story: FIRST explain what happened (audience hasn't read the news), THEN react and analyze
 - Analyze: What does this MEAN? Who wins, who loses? What's the real story?
 - Include genuine disagreement—Alex and Jordan should push back on each other
+- Add host-to-host banter: callbacks, zingers, short stories, and light teasing (keep it friendly)
+- Add more natural reactions like "oh my God", "haha", "ha..", "heh", "mhmm"
 - Connect dots between different stories when possible
 - End naturally, maybe a quick sign-off or teaser for next time
+- You may discuss stories in any order; it does NOT need to match the order provided
 
 OUTPUT FORMAT:
 {
@@ -449,6 +455,9 @@ REQUIREMENTS:
 - Generate ${turnRange} dialogue turns ${durationHint}
 - ${introInstruction}
 - End naturally with a quick sign-off or teaser for next time
+- Add host-to-host banter: callbacks, zingers, short stories, and light teasing (keep it friendly)
+- Add more natural reactions like "oh my God", "haha", "ha..", "heh", "mhmm"
+- You may discuss stories in any order; it does NOT need to match the order provided
 
 STORY STRUCTURE (for each story):
 1. FIRST: Briefly explain what happened - the audience hasn't read the news yet! Give them the key facts (who, what, where, when) in a conversational way.
