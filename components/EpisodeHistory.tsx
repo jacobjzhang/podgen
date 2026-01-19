@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Episode {
   id: string;
@@ -14,14 +15,13 @@ interface Episode {
 }
 
 interface EpisodeHistoryProps {
-  onSelectEpisode: (audioUrl: string, episode: Episode) => void;
   currentEpisodeId?: string;
 }
 
-export default function EpisodeHistory({ onSelectEpisode, currentEpisodeId }: EpisodeHistoryProps) {
+export default function EpisodeHistory({ currentEpisodeId }: EpisodeHistoryProps) {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     fetchEpisodes();
@@ -39,20 +39,8 @@ export default function EpisodeHistory({ onSelectEpisode, currentEpisodeId }: Ep
     }
   };
 
-  const handlePlayEpisode = async (episode: Episode) => {
-    setLoadingId(episode.id);
-    try {
-      const response = await fetch(`/api/episodes?id=${episode.id}`);
-      const data = await response.json();
-
-      if (data.audioUrl) {
-        onSelectEpisode(data.audioUrl, episode);
-      }
-    } catch (error) {
-      console.error('Failed to load episode:', error);
-    } finally {
-      setLoadingId(null);
-    }
+  const handleOpenEpisode = (episode: Episode) => {
+    router.push(`/e/${episode.id}`);
   };
 
   const formatDate = (dateString: string) => {
@@ -103,13 +91,10 @@ export default function EpisodeHistory({ onSelectEpisode, currentEpisodeId }: Ep
     <div className="space-y-1">
       {episodes.map((episode) => {
         const isCurrent = currentEpisodeId === episode.id;
-        const isLoading = loadingId === episode.id;
-
         return (
           <button
             key={episode.id}
-            onClick={() => handlePlayEpisode(episode)}
-            disabled={isLoading}
+            onClick={() => handleOpenEpisode(episode)}
             className={`w-full p-3 rounded-lg text-left transition-all group ${
               isCurrent
                 ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/30'
@@ -122,16 +107,9 @@ export default function EpisodeHistory({ onSelectEpisode, currentEpisodeId }: Ep
                   ? 'bg-[var(--accent)] text-[var(--bg-primary)]'
                   : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] group-hover:bg-[var(--bg-elevated)] group-hover:text-[var(--text-secondary)]'
               }`}>
-                {isLoading ? (
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                )}
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-[var(--text-primary)] truncate">

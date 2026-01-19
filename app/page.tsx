@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import InterestPicker from '@/components/InterestPicker';
 import PlayerBar from '@/components/PlayerBar';
 import EpisodeHistory from '@/components/EpisodeHistory';
@@ -103,24 +103,6 @@ export default function Home() {
     }
   };
 
-  const handleSelectEpisode = useCallback((audioUrl: string, episodeData: { id: string; interests: string[]; duration: number }) => {
-    setEpisode({
-      audioUrl,
-      dialogue: [],
-      newsItems: [],
-      duration: episodeData.duration,
-      id: episodeData.id,
-      interests: episodeData.interests,
-    });
-    setGenerationStep('done');
-    setError(null);
-    setShowTranscript(false);
-    // Close sidebar on mobile after selecting
-    if (window.innerWidth < 768) {
-      setSidebarOpen(false);
-    }
-  }, []);
-
   const isGenerating = ['fetching', 'writing', 'speaking'].includes(generationStep);
 
   const getStepMessage = () => {
@@ -177,7 +159,6 @@ export default function Home() {
                 </h2>
                 <EpisodeHistory
                   key={historyKey}
-                  onSelectEpisode={handleSelectEpisode}
                   currentEpisodeId={episode?.id}
                 />
               </div>

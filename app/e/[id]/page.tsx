@@ -82,6 +82,14 @@ export default async function EpisodePage({ params }: PageProps) {
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-10">
         <div className="mb-6">
+          <a
+            href="/"
+            className="inline-flex items-center justify-center w-full md:w-auto px-5 py-3 rounded-xl bg-[var(--accent)] text-[var(--bg-primary)] font-semibold text-sm md:text-base shadow-lg shadow-[var(--accent)]/20 hover:bg-[var(--accent-hover)] transition"
+          >
+            Generate a new Yapdap episode
+          </a>
+        </div>
+        <div className="mb-6">
           <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">
             Yapdap Episode
           </p>
