@@ -34,7 +34,7 @@ interface ChatCompletionResponse {
  */
 export async function generateDialogue(
   newsItems: NewsItem[],
-  speakerCount: number = 2
+  speakerCount: number = 3
 ): Promise<DialogueTurn[]> {
   const apiKey = process.env.OPENAI_API_KEY;
 

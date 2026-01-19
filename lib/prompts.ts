@@ -353,7 +353,7 @@ function getExtraHostsOverride(speakerCount: number): string {
 /**
  * Get the appropriate system prompt based on TTS provider
  */
-export function getSystemPrompt(provider?: TTSProvider, speakerCount: number = 2): string {
+export function getSystemPrompt(provider?: TTSProvider, speakerCount: number = 3): string {
   const actualProvider = provider || (process.env.TTS_PROVIDER as TTSProvider) || "dia-fal";
   const extraHostsOverride = getExtraHostsOverride(speakerCount);
 
@@ -385,7 +385,7 @@ interface NewsItemWithSummary {
 export function buildUserPrompt(
   newsItems: NewsItemWithSummary[],
   provider?: TTSProvider,
-  speakerCount: number = 2
+  speakerCount: number = 3
 ): string {
   const actualProvider = provider || (process.env.TTS_PROVIDER as TTSProvider) || "dia-fal";
   // VibeVoice and Dia use plain text (no tags)

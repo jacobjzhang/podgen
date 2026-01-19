@@ -4,7 +4,7 @@ import { fetchNewsForInterests } from '@/lib/dataforseo';
 import { enrichNewsItems } from '@/lib/article-enricher';
 import { generateDialogue, estimateDuration } from '@/lib/openai';
 import { generateAudioDataUrl, getCurrentProvider } from '@/lib/tts';
-import { GenerateRequest, GenerateResponse } from '@/lib/types';
+import { CustomInput, GenerateRequest, GenerateResponse, NewsItem } from '@/lib/types';
 import {
   getCachedNews,
   setCachedNews,
@@ -25,18 +25,36 @@ export async function POST(request: Request) {
   try {
     const body: GenerateRequest = await request.json();
     const { interests } = body;
-    const speakerCount = body.speakerCount ?? 2;
+    const speakerCount = body.speakerCount ?? 3;
+    const customInputs: CustomInput[] = Array.isArray(body.customInputs)
+      ? body.customInputs.filter(
+          input =>
+            input &&
+            (input.type === 'url' || input.type === 'prompt') &&
+            typeof input.value === 'string' &&
+            input.value.trim().length > 0
+        )
+      : [];
 
-    if (!interests || !Array.isArray(interests) || interests.length === 0) {
+    if (!interests || !Array.isArray(interests)) {
       return NextResponse.json(
-        { error: 'interests array is required and must not be empty' },
+        { error: 'interests must be an array' },
         { status: 400 }
       );
     }
 
-    if (interests.length > 5) {
+    const totalTopics = interests.length + customInputs.length;
+
+    if (totalTopics === 0) {
       return NextResponse.json(
-        { error: 'Maximum 5 interests allowed' },
+        { error: 'Provide at least one interest, URL, or prompt' },
+        { status: 400 }
+      );
+    }
+
+    if (totalTopics > 5) {
+      return NextResponse.json(
+        { error: 'Maximum 5 total topics allowed' },
         { status: 400 }
       );
     }
@@ -70,18 +88,47 @@ export async function POST(request: Request) {
 
     // Step 1: Fetch news (with cache)
     console.log('\n[Generate] Step 1: Fetching news...');
-    let newsItems = getCachedNews(interests);
+    let newsItems: NewsItem[] = [];
     let stepStart = Date.now();
 
-    if (!newsItems) {
-      newsItems = await fetchNewsForInterests(interests, 3);
-      if (newsItems.length > 0) {
-        setCachedNews(interests, newsItems);
+    if (interests.length > 0) {
+      const cached = getCachedNews(interests);
+      if (!cached) {
+        newsItems = await fetchNewsForInterests(interests, 3);
+        if (newsItems.length > 0) {
+          setCachedNews(interests, newsItems);
+        }
+        timings.news = Date.now() - stepStart;
+        console.log(`[Generate] News fetched in ${(timings.news / 1000).toFixed(1)}s`);
+      } else {
+        newsItems = cached;
+        console.log('[Generate] News loaded from cache');
       }
-      timings.news = Date.now() - stepStart;
-      console.log(`[Generate] News fetched in ${(timings.news / 1000).toFixed(1)}s`);
     } else {
-      console.log('[Generate] News loaded from cache');
+      console.log('[Generate] Skipping news fetch (no interests)');
+    }
+
+    if (customInputs.length > 0) {
+      const customItems: NewsItem[] = customInputs.map((input) => {
+        if (input.type === 'url') {
+          return {
+            title: 'User-provided URL',
+            snippet: `User provided URL: ${input.value}`,
+            url: input.value,
+            source: 'User URL',
+          };
+        }
+
+        return {
+          title: 'User prompt',
+          snippet: input.value,
+          url: '',
+          source: 'User prompt',
+          detailedSummary: input.value,
+        };
+      });
+
+      newsItems = [...newsItems, ...customItems];
     }
 
     if (newsItems.length === 0) {

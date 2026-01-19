@@ -76,7 +76,9 @@ export async function generateAudio(dialogue: DialogueTurn[]): Promise<Blob> {
   const speakerList = SPEAKER_ORDER.filter((speaker) =>
     dialogue.some((turn) => turn.speaker === speaker)
   );
-  const speakers = speakerList.map((speaker) => ({ preset: SPEAKER_PRESETS[speaker] }));
+  const speakers = speakerList.map((speaker) => ({
+    preset: SPEAKER_PRESETS[speaker] as "Frank [EN]" | "Alice [EN]" | "Carter [EN]" | "Mary [EN] (Background Music)" | "Maya [EN]",
+  }));
   const script = formatDialogueAsScript(dialogue);
 
   console.log(

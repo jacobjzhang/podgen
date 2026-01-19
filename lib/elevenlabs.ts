@@ -18,9 +18,10 @@ interface DialogueInput {
 
 /**
  * Map speakers to voice IDs
+ * alex/casey use voice 1, jordan/riley use voice 2
  */
-function getVoiceId(speaker: "alex" | "jordan"): string {
-  if (speaker === "alex") {
+function getVoiceId(speaker: "alex" | "jordan" | "casey" | "riley"): string {
+  if (speaker === "alex" || speaker === "casey") {
     return process.env.ELEVENLABS_VOICE_1 || DEFAULT_VOICE_1;
   }
   return process.env.ELEVENLABS_VOICE_2 || DEFAULT_VOICE_2;

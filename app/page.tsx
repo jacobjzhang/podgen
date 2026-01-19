@@ -25,6 +25,7 @@ export default function Home() {
   const [historyKey, setHistoryKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [speakerCount, setSpeakerCount] = useState(3);
 
   // Close sidebar on larger screens
   useEffect(() => {
@@ -77,7 +78,7 @@ export default function Home() {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ interests: interestLabels, customInputs }),
+        body: JSON.stringify({ interests: interestLabels, customInputs, speakerCount }),
       });
 
       if (!response.ok) {
@@ -247,6 +248,33 @@ export default function Home() {
                 maxSelections={5}
                 disabled={isGenerating}
               />
+            </div>
+
+            {/* Speaker count */}
+            <div className="mb-6 md:mb-8">
+              <h3 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3 md:mb-4">
+                Speakers
+              </h3>
+              <div className="grid grid-cols-4 gap-2">
+                {[1, 2, 3, 4].map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => setSpeakerCount(count)}
+                    disabled={isGenerating}
+                    className={`py-2 rounded-lg text-sm font-medium transition ${
+                      speakerCount === count
+                        ? 'bg-[var(--accent)] text-[var(--bg-primary)]'
+                        : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+                    } ${isGenerating ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  >
+                    {count}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-[var(--text-muted)]">
+                3-4 speakers require VibeVoice.
+              </p>
             </div>
 
             {/* Generate button */}

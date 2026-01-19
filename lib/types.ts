@@ -24,6 +24,7 @@ export interface DialogueTurn {
 export interface GenerateRequest {
   interests: string[];
   speakerCount?: number;
+  customInputs?: CustomInput[];
 }
 
 export interface GenerateResponse {
@@ -31,6 +32,11 @@ export interface GenerateResponse {
   dialogue: DialogueTurn[];
   newsItems: NewsItem[];
   duration?: number;
+}
+
+export interface CustomInput {
+  type: 'url' | 'prompt';
+  value: string;
 }
 
 export interface Interest {

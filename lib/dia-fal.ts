@@ -320,7 +320,7 @@ function concatenateWavBuffers(buffers: ArrayBuffer[]): ArrayBuffer {
   const output = new wavefile.WaveFile();
   output.fromScratch(numChannels, sampleRate, bitDepth, combined);
   const outBuffer = output.toBuffer();
-  return outBuffer.buffer.slice(outBuffer.byteOffset, outBuffer.byteOffset + outBuffer.byteLength);
+  return (outBuffer.buffer as ArrayBuffer).slice(outBuffer.byteOffset, outBuffer.byteOffset + outBuffer.byteLength);
 }
 
 /**

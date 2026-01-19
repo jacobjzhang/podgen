@@ -76,7 +76,7 @@ function newsKey(interests: string[]): string {
 }
 
 function dialogueKey(newsItems: NewsItem[], speakerCount: number): string {
-  const newsHash = hash(newsItems.map(n => n.title).join('|'));
+  const newsHash = hash(newsItems.map(n => `${n.title}:${n.url}:${n.snippet}`).join('|'));
   return `dialogue_${newsHash}_s${speakerCount}`;
 }
 
@@ -101,7 +101,7 @@ export function setCachedNews(interests: string[], news: NewsItem[]): void {
 
 // Enriched news cache (news items with detailed summaries from GPT-5-nano)
 function enrichedKey(newsItems: NewsItem[]): string {
-  const newsHash = hash(newsItems.map(n => n.url).join('|'));
+  const newsHash = hash(newsItems.map(n => `${n.url}:${n.title}:${n.snippet}`).join('|'));
   return `enriched_${newsHash}`;
 }
 
