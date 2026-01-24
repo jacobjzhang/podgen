@@ -273,19 +273,28 @@ export function listEpisodes(): EpisodeMetadata[] {
 }
 
 export function getEpisodeAudio(episodeId: string): string | null {
-  const filePath = join(CACHE_DIR, `audio_${episodeId}.mp3`);
+  const candidates = [
+    { ext: "mp3", mime: "audio/mpeg" },
+    { ext: "wav", mime: "audio/wav" },
+  ];
 
-  if (!existsSync(filePath)) {
-    return null;
+  for (const candidate of candidates) {
+    const filePath = join(CACHE_DIR, `audio_${episodeId}.${candidate.ext}`);
+
+    if (!existsSync(filePath)) {
+      continue;
+    }
+
+    try {
+      const buffer = readFileSync(filePath);
+      const base64 = buffer.toString('base64');
+      return `data:${candidate.mime};base64,${base64}`;
+    } catch {
+      return null;
+    }
   }
 
-  try {
-    const buffer = readFileSync(filePath);
-    const base64 = buffer.toString('base64');
-    return `data:audio/mpeg;base64,${base64}`;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 // Cache stats and cleanup

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { getEpisodeAudio } from '@/lib/cache';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -158,9 +159,10 @@ export default async function EpisodePage({ params }: PageProps) {
     transcriptRes.data?.transcript_text ||
     getTranscriptFromCache(episode.audio_cache_key || episode.id);
 
-  const audioSrc =
-    episode.audio_url ||
-    `/api/episodes?id=${episode.audio_cache_key || episode.id}`;
+  const cachedAudio = episode.audio_url
+    ? null
+    : getEpisodeAudio(episode.audio_cache_key || episode.id);
+  const audioSrc = episode.audio_url || cachedAudio || null;
 
   const duration = formatDuration(episode.audio_duration_seconds);
 

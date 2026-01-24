@@ -32,6 +32,8 @@ export interface GenerateResponse {
   dialogue: DialogueTurn[];
   newsItems: NewsItem[];
   duration?: number;
+  title?: string;
+  excerpt?: string;
 }
 
 export interface CustomInput {

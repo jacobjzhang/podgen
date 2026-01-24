@@ -72,7 +72,7 @@ export default function Home() {
       setCurrentEpisode({
         audioUrl: data.audioUrl,
         dialogue: data.dialogue,
-        title: "The Daily Pulse",
+        title: data.title || "The Daily Pulse",
         interests: selectedInterests.map(i => i.label),
         duration: data.duration,
       });

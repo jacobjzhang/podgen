@@ -16,7 +16,7 @@ interface EpisodeData {
   excerpt?: string;
   interests: string[];
   duration: string;
-  audioSrc: string;
+  audioSrc: string | null;
   sources: Source[];
   transcriptText: string;
 }
@@ -48,6 +48,7 @@ export default function EpisodeContent({ episode }: { episode: EpisodeData }) {
 
   // Set episode in context when component mounts
   useEffect(() => {
+    if (!episode.audioSrc) return;
     setCurrentEpisode({
       id: episode.id,
       audioUrl: episode.audioSrc,

@@ -100,27 +100,32 @@ export async function generateEpisodeMetadata(
     body: JSON.stringify({
       model: METADATA_MODEL,
       messages,
-      max_completion_tokens: 200,
+      max_completion_tokens: 8_000,
       response_format: { type: 'json_object' },
     }),
   });
 
   if (!response.ok) {
     const error = await response.text();
-    console.error('[OpenAI] Metadata API error:', error);
+    console.error('[OpenAI] Metadata API error:', response.status, error);
     return null;
   }
 
   const data: ChatCompletionResponse = await response.json();
   const content = data.choices[0]?.message?.content;
 
-  if (!content) return null;
+  if (!content) {
+    console.error('[OpenAI] Metadata: no content in response');
+    return null;
+  }
 
   try {
     const parsed = JSON.parse(content);
     const title = String(parsed.title || '').trim();
     const excerpt = String(parsed.excerpt || '').trim();
+    console.log(`[OpenAI] Metadata parsed: title="${title}", excerpt="${excerpt.slice(0, 50)}..."`);
     if (!title || !excerpt) {
+      console.warn('[OpenAI] Metadata: title or excerpt empty');
       return null;
     }
     return {

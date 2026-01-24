@@ -82,8 +82,8 @@ async function summarizeArticle(
   content: string,
   apiKey: string
 ): Promise<string> {
-  // Truncate content to ~4000 chars to leave room for output
-  const truncatedContent = content.slice(0, 4000);
+  // Truncate content to ~8000 chars to leave room for output
+  const truncatedContent = content.slice(0, 8000);
 
   const response = await fetch(OPENAI_URL, {
     method: 'POST',
@@ -96,14 +96,14 @@ async function summarizeArticle(
       messages: [
         {
           role: 'system',
-          content: `Summarize this news article in 3-4 sentences for a podcast discussion. Include specific details that make it interesting: names of people involved, exact numbers/dollar amounts, direct quotes, and any surprising or controversial aspects. Be specific, not generic.`
+          content: `Summarize this news article in 5-10 sentences for a podcast discussion. Include specific details that make it interesting: names of people involved, exact numbers/dollar amounts, direct quotes, and any surprising or controversial aspects. Be specific, not generic.`
         },
         {
           role: 'user',
           content: `${title}\n\n${truncatedContent}`
         }
       ],
-      max_completion_tokens: 300,
+      max_completion_tokens: 8_000,
     }),
   });
 

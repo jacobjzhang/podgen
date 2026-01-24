@@ -1,26 +1,28 @@
-// POST /api/generate - Generate podcast episode from interests
-import { NextResponse } from 'next/server';
-import { fetchNewsForInterests } from '@/lib/dataforseo';
-import { enrichNewsItems } from '@/lib/article-enricher';
-import { generateDialogue, estimateDuration, generateEpisodeMetadata } from '@/lib/openai';
-import { generateAudioDataUrl, getCurrentProvider } from '@/lib/tts';
 import { CustomInput, GenerateRequest, GenerateResponse, NewsItem } from '@/lib/types';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { estimateDuration, generateDialogue, generateEpisodeMetadata } from '@/lib/openai';
+import { fetchNews, fetchNewsForInterests, fetchQueryResults } from '@/lib/dataforseo';
+import { generateAudioDataUrl, getCurrentProvider } from '@/lib/tts';
 import {
-  getCachedNews,
-  setCachedNews,
-  getCachedEnrichedNews,
-  setCachedEnrichedNews,
-  getCachedDialogue,
-  setCachedDialogue,
-  getCachedAudio,
-  setCachedAudio,
   getAudioKey,
-  saveEpisodeMetadata,
+  getCachedAudio,
+  getCachedDialogue,
+  getCachedEnrichedNews,
+  getCachedNews,
   logCacheStats,
+  saveEpisodeMetadata,
+  setCachedAudio,
+  setCachedDialogue,
+  setCachedEnrichedNews,
+  setCachedNews,
 } from '@/lib/cache';
 
+// POST /api/generate - Generate podcast episode from interests
+import { NextResponse } from 'next/server';
+import { enrichNewsItems } from '@/lib/article-enricher';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+
 export const maxDuration = 300; // 5 minute timeout for audio generation
+const NEWS_LIMIT = 10;
 
 export async function POST(request: Request) {
   try {
@@ -95,7 +97,7 @@ export async function POST(request: Request) {
     if (interests.length > 0) {
       const cached = getCachedNews(interests);
       if (!cached) {
-        newsItems = await fetchNewsForInterests(interests, 3);
+        newsItems = await fetchNewsForInterests(interests, NEWS_LIMIT);
         if (newsItems.length > 0) {
           setCachedNews(interests, newsItems);
         }
@@ -109,27 +111,65 @@ export async function POST(request: Request) {
       console.log('[Generate] Skipping news fetch (no interests)');
     }
 
+    // Process custom inputs based on type and length
     if (customInputs.length > 0) {
-      const customItems: NewsItem[] = customInputs.map((input) => {
+      const QUERY_WORD_LIMIT = 15; // Inputs ≤15 words treated as search queries
+
+      const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
+
+      for (const input of customInputs) {
         if (input.type === 'url') {
-          return {
+          // URLs get fetched and enriched later
+          newsItems.push({
             title: 'User-provided URL',
-            snippet: `User provided URL: ${input.value}`,
+            snippet: `Content from: ${input.value}`,
             url: input.value,
             source: 'User URL',
-          };
+          });
+        } else {
+          const wordCount = countWords(input.value);
+
+          if (wordCount <= QUERY_WORD_LIMIT) {
+            // Short input: treat as search query, fetch news + web results
+            console.log(`[Generate] Custom input "${input.value}" (${wordCount} words) → comprehensive search`);
+            try {
+              // Get both news articles and web results for better coverage
+              const queryResults = await fetchQueryResults(input.value, 5, 5);
+              if (queryResults.length > 0) {
+                newsItems.push(...queryResults);
+                console.log(`[Generate] Found ${queryResults.length} results for "${input.value}"`);
+              } else {
+                // No results found, add as a topic for context
+                newsItems.push({
+                  title: `Topic: ${input.value}`,
+                  snippet: `User requested coverage of: ${input.value}`,
+                  url: '',
+                  source: 'User topic',
+                });
+              }
+            } catch (err) {
+              console.error(`[Generate] Search failed for "${input.value}":`, err);
+              // Fallback: add as topic
+              newsItems.push({
+                title: `Topic: ${input.value}`,
+                snippet: `User requested coverage of: ${input.value}`,
+                url: '',
+                source: 'User topic',
+              });
+            }
+          } else {
+            // Long input: treat as user-provided content
+            console.log(`[Generate] Custom input (${wordCount} words) → user content`);
+            newsItems.push({
+              title: 'User-provided content',
+              snippet: input.value.slice(0, 200) + (input.value.length > 200 ? '...' : ''),
+              url: '',
+              source: 'User content',
+              detailedSummary: input.value,
+            });
+          }
         }
-
-        return {
-          title: 'User prompt',
-          snippet: input.value,
-          url: '',
-          source: 'User prompt',
-          detailedSummary: input.value,
-        };
-      });
-
-      newsItems = [...newsItems, ...customItems];
+      }
     }
 
     if (newsItems.length === 0) {
@@ -202,9 +242,11 @@ export async function POST(request: Request) {
       ...customInputs.map(input => input.value),
     ].filter(Boolean).join(', ');
 
+    console.log('\n[Generate] Step 5: Generating episode metadata...');
     const generatedMeta = await generateEpisodeMetadata(enrichedNews, dialogue, inputSummary);
     const title = generatedMeta?.title || inputSummary || 'Untitled Episode';
     const excerpt = generatedMeta?.excerpt || null;
+    console.log(`[Generate] Metadata: title="${title}", excerpt="${excerpt?.slice(0, 50) || 'none'}..."`);
 
     const transcriptText = dialogue
       .map((turn) => `${String(turn.speaker).toUpperCase()}: ${turn.text}`)
@@ -301,6 +343,8 @@ export async function POST(request: Request) {
       dialogue,
       newsItems: enrichedNews,
       duration,
+      title,
+      excerpt: excerpt || undefined,
     };
 
     return NextResponse.json(response);
